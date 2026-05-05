@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "id": 1,
+      "task_id": "T-001",
+      "content": "This is a test comment",
+      "author": "user1",
+      "created": "2026-05-05T07:50:06.685610Z",
+      "updated": "2026-05-05T07:50:06.685619Z",
+      "parent_id": null,
+      "mentions": ["user2"],
+      "reactions": {}
+    },
+    {
+      "id": 2,
+      "task_id": "T-001",
+      "content": "Test",
+      "author": "user",
+      "created": "2026-05-05T07:52:17.809080Z",
+      "updated": "2026-05-05T07:52:17.809084Z",
+      "parent_id": null,
+      "mentions": [],
+      "reactions": {}
+    }
+  ],
+  "next_id": 3
+}

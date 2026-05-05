@@ -1,0 +1,15 @@
+{
+  "by_task": {
+    "T-001": [
+      {
+        "id": 1,
+        "task_id": "T-001",
+        "content": "Test comment",
+        "author": "admin",
+        "created": "2026-05-05T07:00:25.134825Z",
+        "edited": null
+      }
+    ]
+  },
+  "next_id": 2
+}

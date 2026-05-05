@@ -1,0 +1,26 @@
+{
+  "entries": [
+    {
+      "id": 1,
+      "task_id": "T-224",
+      "user": "test_user",
+      "started_at": "2026-05-05T07:36:05.945157Z",
+      "ended_at": "2026-05-05T07:36:05.945170Z",
+      "duration_seconds": 3600,
+      "manual": true,
+      "note": "Manual entry"
+    },
+    {
+      "id": 2,
+      "task_id": "T-233",
+      "user": "developer",
+      "started_at": "2026-05-05T08:44:00.067662Z",
+      "ended_at": "2026-05-05T08:44:00.067679Z",
+      "duration_seconds": 7200,
+      "manual": true,
+      "note": "Meeting"
+    }
+  ],
+  "active_timers": {},
+  "next_id": 3
+}

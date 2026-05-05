@@ -1,4 +1,14 @@
 {
-  "entries": {},
-  "stats": {"hits": 0, "misses": 0}
+  "entries": {
+    "test:abc": {
+      "value": "hello",
+      "expires": 1778012276.4067605,
+      "created": 1778008676.4067616,
+      "hits": 1
+    }
+  },
+  "stats": {
+    "hits": 1,
+    "misses": 0
+  }
 }

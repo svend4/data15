@@ -2,14 +2,48 @@
   "items": [
     {
       "id": 1,
-      "title": "Test",
-      "message": "Test notification",
-      "level": "info",
-      "task_id": null,
-      "user": "system",
-      "read": false,
-      "created": "2026-05-05T07:15:59.607645Z"
+      "action": "task_created",
+      "entity_type": "task",
+      "entity_id": "test-001",
+      "details": {
+        "title": "Test Task"
+      },
+      "actor": "system",
+      "timestamp": "2026-05-05T07:27:31.757811Z"
+    },
+    {
+      "id": 2,
+      "action": "task_completed",
+      "entity_type": "task",
+      "entity_id": "test-002",
+      "details": {
+        "title": "Another Task"
+      },
+      "actor": "system",
+      "timestamp": "2026-05-05T07:27:31.770224Z"
+    },
+    {
+      "id": 3,
+      "action": "task_created",
+      "entity_type": "task",
+      "entity_id": "test-001",
+      "details": {
+        "title": "Test Task"
+      },
+      "actor": "system",
+      "timestamp": "2026-05-05T07:28:22.623639Z"
+    },
+    {
+      "id": 4,
+      "action": "task_completed",
+      "entity_type": "task",
+      "entity_id": "test-002",
+      "details": {
+        "title": "Another Task"
+      },
+      "actor": "system",
+      "timestamp": "2026-05-05T07:28:22.674240Z"
     }
   ],
-  "next_id": 2
+  "next_id": 5
 }

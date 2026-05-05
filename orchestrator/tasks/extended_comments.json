@@ -8,7 +8,9 @@
       "created": "2026-05-05T07:50:06.685610Z",
       "updated": "2026-05-05T07:50:06.685619Z",
       "parent_id": null,
-      "mentions": ["user2"],
+      "mentions": [
+        "user2"
+      ],
       "reactions": {}
     },
     {

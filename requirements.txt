@@ -1,0 +1,15 @@
+# Hybrid Orchestrator v5.0 - Dependencies
+# Core
+flask>=2.3.0
+werkzeug>=2.3.0
+
+# Optional enhancements
+# prometheus-client>=0.17.0  # For Prometheus metrics export
+# redis>=4.5.0              # For distributed caching
+# psycopg2-binary>=2.9.0   # For PostgreSQL support
+# sqlalchemy>=2.0.0         # For ORM operations
+
+# Development
+# pytest>=7.0.0
+# black>=23.0.0
+# mypy>=1.0.0

@@ -132,12 +132,133 @@
       "created": "2026-05-05T07:31:02.749219Z"
     }
   ],
+    {
+      "id": 4,
+      "name": "Hermes Analysis",
+      "category": "agents",
+      "description": "Deep analysis task performed by the Hermes agent",
+      "fields": {
+        "topic": {
+          "type": "string",
+          "required": true,
+          "label": "Analysis Topic"
+        },
+        "depth": {
+          "type": "select",
+          "options": ["brief", "standard", "deep"],
+          "default": "standard",
+          "label": "Analysis Depth"
+        },
+        "output_format": {
+          "type": "select",
+          "options": ["text", "json", "markdown"],
+          "default": "markdown",
+          "label": "Output Format"
+        }
+      },
+      "defaults": {
+        "agent": "Hermes",
+        "priority": "medium",
+        "tags": ["analysis", "hermes"]
+      },
+      "version": 1,
+      "created": "2026-05-05T00:00:00Z"
+    },
+    {
+      "id": 5,
+      "name": "OpenClaw Search",
+      "category": "agents",
+      "description": "External web research task performed by OpenClaw agent",
+      "fields": {
+        "query": {
+          "type": "string",
+          "required": true,
+          "label": "Search Query"
+        },
+        "sources": {
+          "type": "select",
+          "options": ["web", "news", "academic", "all"],
+          "default": "web",
+          "label": "Sources"
+        },
+        "timeout": {
+          "type": "number",
+          "default": 30,
+          "label": "Timeout (seconds)"
+        }
+      },
+      "defaults": {
+        "agent": "OpenClaw",
+        "priority": "medium",
+        "tags": ["research", "openclaw"]
+      },
+      "version": 1,
+      "created": "2026-05-05T00:00:00Z"
+    },
+    {
+      "id": 6,
+      "name": "CAMEL Decompose",
+      "category": "agents",
+      "description": "Decompose a complex goal into subtasks using CAMEL-AI",
+      "fields": {
+        "goal": {
+          "type": "textarea",
+          "required": true,
+          "label": "Goal to Decompose"
+        },
+        "depth": {
+          "type": "number",
+          "default": 3,
+          "label": "Decomposition Depth"
+        },
+        "assign_to": {
+          "type": "select",
+          "options": ["Hermes", "OpenClaw", "auto"],
+          "default": "auto",
+          "label": "Assign Subtasks To"
+        }
+      },
+      "defaults": {
+        "agent": "CAMEL",
+        "priority": "high",
+        "tags": ["decompose", "camel", "workflow"]
+      },
+      "version": 1,
+      "created": "2026-05-05T00:00:00Z"
+    },
+    {
+      "id": 7,
+      "name": "Full Pipeline",
+      "category": "agents",
+      "description": "Full multi-agent pipeline: CAMEL decompose → OpenClaw research → Hermes analyze → Multica save",
+      "fields": {
+        "goal": {
+          "type": "textarea",
+          "required": true,
+          "label": "Pipeline Goal"
+        },
+        "workflow_id": {
+          "type": "number",
+          "default": 5,
+          "label": "Workflow ID (default: 5 = full_pipeline)"
+        }
+      },
+      "defaults": {
+        "agent": "Hermes",
+        "priority": "high",
+        "tags": ["pipeline", "multi-agent", "full"]
+      },
+      "version": 1,
+      "created": "2026-05-05T00:00:00Z"
+    }
+  ],
   "categories": [
     "issues",
     "features",
     "development",
     "documentation",
-    "infrastructure"
+    "infrastructure",
+    "agents"
   ],
-  "next_id": 4
+  "next_id": 8
 }

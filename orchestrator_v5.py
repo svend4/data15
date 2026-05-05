@@ -1879,13 +1879,19 @@ Board Stats:
         self.history.add_entry(task.id, "created_from_template", {"template": template_name})
         return f"✅ Created [{task.id}]: {task.title} (from template: {template_name})"
 
+    def _cache_key(self, prefix: str, data: str) -> str:
+        return f"{prefix}:{hashlib.md5(data.encode()).hexdigest()[:12]}"
+
     def cmd_analyze(self, topic: str) -> str:
         """Run Hermes analysis, with caching keyed by topic text."""
         if self.config.is_caching_enabled():
-            cached = self.cache.get("analyze", topic)
+            cache_key = self._cache_key("analyze", topic)
+            cached = self.cache.get(cache_key)
             if cached:
                 self.events.publish("cache.hit", {"topic": topic})
-                return f"📦 [CACHED] {cached}\nCache: {self.cache.get_stats()['hit_rate']}"
+                stats = self.cache.get_stats()
+                hit_rate = stats.get("hit_rate", stats.get("total_hits", "?"))
+                return f"[CACHED] {cached}\nCache hits: {hit_rate}"
 
         task = self.board.add_task(title=f"Analysis: {topic}", agent="Hermes", tags=["analysis"])
         self.board.update_status(task.id, "running")
@@ -1899,7 +1905,7 @@ Board Stats:
         result = output if output else f"[{agent_label}] Analysis complete for: {topic}"
 
         if self.config.is_caching_enabled():
-            self.cache.set("analyze", topic, result)
+            self.cache.set(self._cache_key("analyze", topic), result)
 
         self.board.update_status(task.id, "completed", 100)
         self.events.publish("task.completed", {"task_id": task.id})
@@ -1953,6 +1959,99 @@ Board Stats:
         self._save_state()
         return f"✅ Created {len(tasks)} tasks for: {goal}\n" + \
                "\n".join([f"  [{t.id}] {t.title} → {t.agent}" for t in tasks])
+
+    def cmd_research(self, query: str) -> str:
+        """Run OpenClaw external research, with caching keyed by query."""
+        if self.config.is_caching_enabled():
+            cache_key = self._cache_key("research", query)
+            cached = self.cache.get(cache_key)
+            if cached:
+                self.events.publish("cache.hit", {"query": query})
+                stats = self.cache.get_stats()
+                hit_rate = stats.get("hit_rate", stats.get("total_hits", "?"))
+                return f"[CACHED] {cached}\nCache hits: {hit_rate}"
+
+        task = self.board.add_task(title=f"Research: {query}", agent="OpenClaw", tags=["research"])
+        self.board.update_status(task.id, "running")
+        self.events.publish("task.started", {"task_id": task.id})
+
+        wf_engine = WorkflowEngine(self)
+        agent_result = wf_engine._call_openclaw_agent(query, {"goal": query})
+        output = agent_result.get("output", "").strip()
+        agent_label = agent_result.get("agent", "openclaw")
+        result = output if output else f"[{agent_label}] Research complete for: {query}"
+
+        if self.config.is_caching_enabled():
+            self.cache.set(self._cache_key("research", query), result)
+
+        self.board.update_status(task.id, "completed", 100)
+        self.events.publish("task.completed", {"task_id": task.id})
+        self._save_state()
+        return result
+
+    def cmd_workflow(self, action: str, wf_id_or_name: str = "", goal: str = "") -> str:
+        """Manage and execute workflows. Actions: list, run <id|name> [goal]"""
+        wf_engine = WorkflowEngine(self)
+        workflows = wf_engine.workflows.get("workflows", [])
+
+        if action == "list":
+            if not workflows:
+                return "No workflows defined."
+            lines = ["Workflows:", "=" * 50]
+            for wf in workflows:
+                lines.append(f"  [{wf['id']}] {wf['name']} — {wf.get('description', '')}")
+                lines.append(f"      Steps: {len(wf.get('steps', []))}")
+            return "\n".join(lines)
+
+        if action == "run":
+            if not wf_id_or_name:
+                return "Usage: /workflow run <id|name> [goal]"
+
+            # Resolve by id or name
+            target = None
+            for wf in workflows:
+                if str(wf["id"]) == wf_id_or_name or wf["name"] == wf_id_or_name:
+                    target = wf
+                    break
+            if target is None:
+                return f"Workflow not found: {wf_id_or_name}"
+
+            context = {"goal": goal} if goal else {}
+            self.events.publish("workflow.started", {"workflow": target["name"], "goal": goal})
+            execution = wf_engine.execute_workflow(target["id"], context)
+            status = execution.get("status", "unknown")
+            exec_id = execution.get("id", "?")
+            steps_done = len([r for r in execution.get("results", []) if r["status"] == "completed"])
+            steps_total = len(target.get("steps", []))
+            return (
+                f"Workflow '{target['name']}' [{exec_id}]\n"
+                f"Status: {status} | Steps: {steps_done}/{steps_total}\n"
+                f"Goal: {goal or '(none)'}"
+            )
+
+        return f"Unknown action '{action}'. Use: list | run <id|name> [goal]"
+
+    def cmd_skill(self, action: str, skill_name: str = "") -> str:
+        """List or inspect skills. Actions: list, info <name>"""
+        if action == "list":
+            skill_files = sorted(SKILLS_DIR.glob("*.md"))
+            if not skill_files:
+                return f"No skills found in {SKILLS_DIR}"
+            lines = ["Skills:", "=" * 40]
+            for sf in skill_files:
+                lines.append(f"  {sf.stem}")
+            return "\n".join(lines)
+
+        if action == "info":
+            if not skill_name:
+                return "Usage: /skill info <name>"
+            skill_file = SKILLS_DIR / f"{skill_name}.md"
+            if not skill_file.exists():
+                available = [f.stem for f in SKILLS_DIR.glob("*.md")]
+                return f"Skill '{skill_name}' not found. Available: {', '.join(available)}"
+            return skill_file.read_text(encoding="utf-8")
+
+        return f"Unknown action '{action}'. Use: list | info <name>"
 
     def cmd_cron_list(self) -> str:
         jobs = self.cron.list_jobs()
@@ -2048,14 +2147,22 @@ Users: {len(self.rbac.users)}
         return self.config.get_validation_report()
 
     def cmd_help(self) -> str:
-        return """Hybrid Orchestrator v5.0 - PRODUCTION
-{'=' * 55}
+        sep = "=" * 55
+        return f"""Hybrid Orchestrator v5.0 - PRODUCTION
+{sep}
 TASK MANAGEMENT:
   /board              - Show task board
-  /add <title>       - Add new task
+  /add <title>        - Add new task
   /analyze <topic>    - Hermes analysis (cached)
-  /both <topic>       - Both agents parallel
-  /camel <goal> [d]  - CAMEL workflow
+  /research <query>   - OpenClaw external research (cached)
+  /both <topic>       - Both agents in parallel
+  /camel <goal> [d]   - CAMEL workflow decomposition
+
+WORKFLOWS & SKILLS:
+  /workflow list                   - List all workflows
+  /workflow run <id|name> [goal]   - Execute a workflow
+  /skill list                      - List available skills
+  /skill info <name>               - Show skill documentation
 
 CONFIGURATION:
   /config             - Show configuration
@@ -2064,34 +2171,29 @@ CONFIGURATION:
 
 CRON JOBS:
   /cron-list          - List scheduled tasks
-  /cron-add <n> <c> <s> - Add task
+  /cron-add <n> <c> <s> - Add cron task
 
 USERS (RBAC):
   /user-list          - List users
-  /user-add <u> <p> [r] - Add user
+  /user-add <u> <p> [r] - Add user (roles: admin/operator/viewer)
 
 MONITORING:
   /events [type] [n]  - Recent events
-  /rate-limit        - Rate limit status
+  /rate-limit         - Rate limit status
   /metrics            - Prometheus metrics
 
 SYSTEM:
-  /status            - Full status
-  /health            - Health check
-  /backup            - Cleanup old backups
-  /help              - This help
-{'=' * 55}
-Part I Features:
-  ✅ Thread-safe JSON (fcntl.flock)
-  ✅ Atomic writes + auto-backup
-  ✅ WebSocket Event Bus
-  ✅ Rate Limiting + Retry
-  ✅ Role-Based Access Control
-  ✅ Prometheus Metrics + Circuit Breaker
-  ✅ Request Deduplication
-  ✅ PostgreSQL Ready
-  ✅ Message Queue Ready
-{'=' * 55}"""
+  /status             - Full status
+  /health             - Health check
+  /backup             - Cleanup old backups
+  /help               - This help
+{sep}
+Architecture: B+A Hybrid (Skills + Real Connectors)
+  Hermes  → hermes CLI / hermes_llm.py fallback
+  OpenClaw→ openclaw_runner.sh / NVM + Node.js
+  Multica → POST localhost:3000 / internal board fallback
+  CAMEL   → camel-ai SDK / CAMELLayer fallback
+{sep}"""
 
 
 # ============================================================================
@@ -2256,6 +2358,24 @@ def main():
             goal = ' '.join(cmd_args[:-1])
         print(orch.cmd_camel(goal, depth) if goal else orch.cmd_help())
         return
+    if cmd in ['/research', 'research']:
+        query = ' '.join(cmd_args)
+        print(orch.cmd_research(query) if query else "Usage: /research <query>")
+        return
+    if cmd in ['/workflow', 'workflow']:
+        action = cmd_args[0] if cmd_args else 'list'
+        if action == 'run' and len(cmd_args) >= 2:
+            wf_id_or_name = cmd_args[1]
+            goal = ' '.join(cmd_args[2:]) if len(cmd_args) > 2 else ''
+            print(orch.cmd_workflow('run', wf_id_or_name, goal))
+        else:
+            print(orch.cmd_workflow(action))
+        return
+    if cmd in ['/skill', 'skill']:
+        action = cmd_args[0] if cmd_args else 'list'
+        skill_name = cmd_args[1] if len(cmd_args) > 1 else ''
+        print(orch.cmd_skill(action, skill_name))
+        return
 
     # Monitoring
     if cmd in ['/metrics', 'metrics']:
@@ -2379,6 +2499,8 @@ def main():
     # API Server
     if cmd in ['/api-server', 'api-server']:
         port = int(cmd_args[0]) if cmd_args else 5000
+        # Start scheduled-task background poller before serving
+        TaskScheduler(orch).start_background_loop(interval=60)
         api = RestAPI(orch)
         api.run(port=port)
         return
@@ -4316,10 +4438,65 @@ class TaskTemplatesLibrary:
                 "defaults": {"priority": "medium", "tags": ["review", "code"]},
                 "version": 1,
                 "created": get_utc_timestamp()
+            },
+            {
+                "id": 4,
+                "name": "Hermes Analysis",
+                "category": "agents",
+                "description": "Deep analysis task performed by the Hermes agent",
+                "fields": {
+                    "topic": {"type": "string", "required": True, "label": "Analysis Topic"},
+                    "depth": {"type": "select", "options": ["brief", "standard", "deep"], "default": "standard", "label": "Analysis Depth"},
+                    "output_format": {"type": "select", "options": ["text", "json", "markdown"], "default": "markdown", "label": "Output Format"}
+                },
+                "defaults": {"agent": "Hermes", "priority": "medium", "tags": ["analysis", "hermes"]},
+                "version": 1,
+                "created": get_utc_timestamp()
+            },
+            {
+                "id": 5,
+                "name": "OpenClaw Search",
+                "category": "agents",
+                "description": "External web research task performed by OpenClaw agent",
+                "fields": {
+                    "query": {"type": "string", "required": True, "label": "Search Query"},
+                    "sources": {"type": "select", "options": ["web", "news", "academic", "all"], "default": "web", "label": "Sources"},
+                    "timeout": {"type": "number", "default": 30, "label": "Timeout (seconds)"}
+                },
+                "defaults": {"agent": "OpenClaw", "priority": "medium", "tags": ["research", "openclaw"]},
+                "version": 1,
+                "created": get_utc_timestamp()
+            },
+            {
+                "id": 6,
+                "name": "CAMEL Decompose",
+                "category": "agents",
+                "description": "Decompose a complex goal into subtasks using CAMEL-AI",
+                "fields": {
+                    "goal": {"type": "textarea", "required": True, "label": "Goal to Decompose"},
+                    "depth": {"type": "number", "default": 3, "label": "Decomposition Depth"},
+                    "assign_to": {"type": "select", "options": ["Hermes", "OpenClaw", "auto"], "default": "auto", "label": "Assign Subtasks To"}
+                },
+                "defaults": {"agent": "CAMEL", "priority": "high", "tags": ["decompose", "camel", "workflow"]},
+                "version": 1,
+                "created": get_utc_timestamp()
+            },
+            {
+                "id": 7,
+                "name": "Full Pipeline",
+                "category": "agents",
+                "description": "Full multi-agent pipeline: CAMEL decompose → OpenClaw research → Hermes analyze → Multica save",
+                "fields": {
+                    "goal": {"type": "textarea", "required": True, "label": "Pipeline Goal"},
+                    "workflow_id": {"type": "number", "default": 5, "label": "Workflow ID (default: 5 = full_pipeline)"}
+                },
+                "defaults": {"agent": "Hermes", "priority": "high", "tags": ["pipeline", "multi-agent", "full"]},
+                "version": 1,
+                "created": get_utc_timestamp()
             }
         ]
-        self.templates["categories"] = ["issues", "features", "development", "documentation", "infrastructure"]
-        self.templates["next_id"] = 4
+        self.templates["categories"] = ["issues", "features", "development", "documentation", "infrastructure", "agents"]
+        self.templates["next_id"] = 8
         self._save()
 
     def add_template(self, name: str, category: str, fields: dict,
@@ -5752,20 +5929,79 @@ class IntegrationHub:
             return {"error": str(e)}
 
     def _send_slack(self, config: dict, message: str, data: dict = None) -> dict:
-        """Send Slack notification (stub)"""
+        """Send Slack notification via incoming webhook."""
+        import urllib.request
         webhook_url = config.get("webhook_url", "")
-        if webhook_url:
-            # In production, use requests library
-            return {"status": "sent", "integration": "slack", "message": message[:50]}
-        return {"error": "No webhook URL configured"}
+        if not webhook_url:
+            return {"error": "No webhook_url configured for Slack"}
+        payload = json.dumps({"text": message}).encode("utf-8")
+        req = urllib.request.Request(
+            webhook_url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return {"status": "sent", "integration": "slack", "http_status": resp.status}
+        except Exception as e:
+            return {"error": str(e), "integration": "slack"}
 
     def _send_email(self, config: dict, message: str, data: dict = None) -> dict:
-        """Send email notification (stub)"""
-        return {"status": "sent", "integration": "email", "message": message[:50]}
+        """Send email via SMTP; falls back to writing a log file."""
+        import smtplib
+        from email.mime.text import MIMEText
+
+        smtp_host = config.get("smtp_host", "")
+        smtp_port = int(config.get("smtp_port", 587))
+        smtp_user = config.get("smtp_user", "")
+        smtp_pass = config.get("smtp_password", "")
+        to_addr   = config.get("to", "")
+        from_addr = config.get("from", smtp_user or "orchestrator@localhost")
+        subject   = config.get("subject", "Orchestrator Notification")
+
+        if smtp_host and to_addr:
+            try:
+                msg = MIMEText(message)
+                msg["Subject"] = subject
+                msg["From"] = from_addr
+                msg["To"] = to_addr
+                with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as s:
+                    s.ehlo()
+                    if smtp_pass:
+                        s.starttls()
+                        s.login(smtp_user, smtp_pass)
+                    s.sendmail(from_addr, [to_addr], msg.as_string())
+                return {"status": "sent", "integration": "email", "to": to_addr}
+            except Exception as e:
+                pass  # fall through to log fallback
+
+        # Log fallback — write to file when SMTP not configured or failed
+        log_path = LOGS_DIR / f"email_fallback_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        log_path.write_text(
+            f"TO: {to_addr or '(not set)'}\nSUBJECT: {subject}\n\n{message}",
+            encoding="utf-8",
+        )
+        return {"status": "logged", "integration": "email", "log_file": str(log_path)}
 
     def _send_webhook(self, config: dict, message: str, data: dict = None) -> dict:
-        """Send webhook notification (stub)"""
-        return {"status": "sent", "integration": "webhook", "message": message[:50]}
+        """Send a generic JSON POST webhook."""
+        import urllib.request
+        url = config.get("url", "")
+        if not url:
+            return {"error": "No url configured for webhook"}
+        payload = json.dumps({"message": message, "data": data or {}}).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return {"status": "sent", "integration": "webhook", "http_status": resp.status}
+        except Exception as e:
+            return {"error": str(e), "integration": "webhook"}
 
     def get_status(self) -> dict:
         """Get integration status"""
@@ -5927,6 +6163,25 @@ class TaskScheduler:
                 self._save()
                 return True
             return False
+
+    def start_background_loop(self, interval: int = 60) -> threading.Thread:
+        """Start a daemon thread that polls for due tasks every `interval` seconds."""
+        def _loop():
+            while True:
+                try:
+                    due = self.get_due_tasks()
+                    for task in due:
+                        try:
+                            self.execute_scheduled_task(task["id"])
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+                time.sleep(interval)
+
+        t = threading.Thread(target=_loop, daemon=True, name="TaskScheduler-bg")
+        t.start()
+        return t
 
 
 # ============================================================================

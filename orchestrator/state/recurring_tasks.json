@@ -1,0 +1,52 @@
+{
+  "tasks": [
+    {
+      "id": "RT-001",
+      "name": "Daily Backup Task",
+      "template": {
+        "title": "Daily Backup",
+        "type": "automated",
+        "board_id": "main"
+      },
+      "schedule_type": 60,
+      "schedule": 60,
+      "enabled": true,
+      "last_run": null,
+      "next_run": "2026-05-05T07:55:41.288725+00:00",
+      "run_count": 0,
+      "created": "2026-05-05T07:25:41.288720Z"
+    },
+    {
+      "id": "RT-002",
+      "name": "Daily Backup Task",
+      "template": {
+        "title": "Daily Backup",
+        "type": "automated",
+        "board_id": "main"
+      },
+      "schedule_type": "interval",
+      "schedule": 60,
+      "enabled": true,
+      "last_run": null,
+      "next_run": "2026-05-05T08:27:31.742852+00:00",
+      "run_count": 0,
+      "created": "2026-05-05T07:27:31.742846Z"
+    },
+    {
+      "id": "RT-003",
+      "name": "Daily Backup Task",
+      "template": {
+        "title": "Daily Backup",
+        "type": "automated",
+        "board_id": "main"
+      },
+      "schedule_type": "interval",
+      "schedule": 60,
+      "enabled": true,
+      "last_run": null,
+      "next_run": "2026-05-05T08:28:22.603155+00:00",
+      "run_count": 0,
+      "created": "2026-05-05T07:28:22.603150Z"
+    }
+  ]
+}

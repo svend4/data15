@@ -1,0 +1,8 @@
+{
+  "openai_api_key": "sk-api-98frr9px3jFXhXgzbfSBD7Fdgyix52JSbhxQ6rP6rb7xzqjRFpHJEVEnHaluI1W3pdeHRZ8cMU__CqOra3RWCw40MIOkTdkPCViSbxt9zpVspsQMwtTz2y0",
+  "api_provider": "openai",
+  "openclaw_enabled": true,
+  "cache_enabled": true,
+  "cache_ttl": 3600,
+  "version": "4.0"
+}

@@ -1,0 +1,89 @@
+{
+  "articles": [
+    {
+      "id": 1,
+      "title": "Getting Started",
+      "content": "Welcome to the orchestrator...",
+      "category": "tutorials",
+      "tags": [
+        "guide",
+        "basics"
+      ],
+      "author": "system",
+      "created": "2026-05-05T07:44:54.849764Z",
+      "updated": "2026-05-05T07:44:54.849772Z",
+      "views": 0,
+      "version": 1
+    },
+    {
+      "id": 2,
+      "title": "Getting Started Guide",
+      "content": "This guide covers the basics of using the orchestrator...",
+      "category": "tutorials",
+      "tags": [
+        "guide",
+        "beginner",
+        "setup"
+      ],
+      "author": "system",
+      "created": "2026-05-05T08:43:36.570365Z",
+      "updated": "2026-05-05T08:43:36.570377Z",
+      "views": 0,
+      "version": 1
+    },
+    {
+      "id": 3,
+      "title": "API Reference",
+      "content": "Complete API reference for all endpoints...",
+      "category": "reference",
+      "tags": [
+        "api",
+        "developer",
+        "endpoints"
+      ],
+      "author": "system",
+      "created": "2026-05-05T08:43:36.586122Z",
+      "updated": "2026-05-05T08:43:36.586133Z",
+      "views": 0,
+      "version": 1
+    },
+    {
+      "id": 4,
+      "title": "Getting Started Guide",
+      "content": "This guide covers the basics of using the orchestrator...",
+      "category": "tutorials",
+      "tags": [
+        "guide",
+        "beginner",
+        "setup"
+      ],
+      "author": "system",
+      "created": "2026-05-05T08:43:59.659777Z",
+      "updated": "2026-05-05T08:43:59.659789Z",
+      "views": 0,
+      "version": 1
+    },
+    {
+      "id": 5,
+      "title": "API Reference",
+      "content": "Complete API reference for all endpoints...",
+      "category": "reference",
+      "tags": [
+        "api",
+        "developer",
+        "endpoints"
+      ],
+      "author": "system",
+      "created": "2026-05-05T08:43:59.673629Z",
+      "updated": "2026-05-05T08:43:59.673641Z",
+      "views": 0,
+      "version": 1
+    }
+  ],
+  "categories": [
+    "general",
+    "tutorials",
+    "reference"
+  ],
+  "next_id": 6
+}

@@ -1,0 +1,20 @@
+{
+  "enabled": {
+    "slack": true,
+    "email": true,
+    "jira": true
+  },
+  "config": {
+    "slack": {
+      "webhook_url": "https://hooks.slack.com/services/XXX"
+    },
+    "email": {
+      "smtp_host": "smtp.gmail.com",
+      "smtp_port": 587
+    },
+    "jira": {
+      "base_url": "https://company.atlassian.net"
+    }
+  },
+  "last_sync": {}
+}

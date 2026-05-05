@@ -1,0 +1,49 @@
+{
+  "operations": [
+    {
+      "operation": "test_op",
+      "duration": 0.5,
+      "success": true,
+      "timestamp": "2026-05-05T07:28:22.931079Z",
+      "details": {
+        "detail": "test"
+      }
+    },
+    {
+      "operation": "test_op",
+      "duration": 1.0,
+      "success": true,
+      "timestamp": "2026-05-05T07:28:22.941178Z",
+      "details": {
+        "detail": "test2"
+      }
+    },
+    {
+      "operation": "test_op",
+      "duration": 2.0,
+      "success": false,
+      "timestamp": "2026-05-05T07:28:22.953331Z",
+      "details": {
+        "detail": "failed"
+      }
+    }
+  ],
+  "timings": {
+    "test_op": [
+      0.5,
+      1.0,
+      2.0
+    ]
+  },
+  "errors": [
+    {
+      "operation": "test_op",
+      "duration": 2.0,
+      "success": false,
+      "timestamp": "2026-05-05T07:28:22.953331Z",
+      "details": {
+        "detail": "failed"
+      }
+    }
+  ]
+}

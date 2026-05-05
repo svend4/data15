@@ -13,7 +13,7 @@
   "tasks": [
     {
       "id": "T-001",
-      "title": "Test task for Orchestrator",
+      "title": "\u0422\u0435\u0441\u0442\u043e\u0432\u0430\u044f \u0437\u0430\u0434\u0430\u0447\u0430 \u0434\u043b\u044f \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0438 Orchestrator",
       "description": "",
       "agent": "Hermes",
       "status": "queued",
@@ -32,7 +32,7 @@
     },
     {
       "id": "T-002",
-      "title": "Second test task",
+      "title": "\u0412\u0442\u043e\u0440\u0430\u044f \u0442\u0435\u0441\u0442\u043e\u0432\u0430\u044f \u0437\u0430\u0434\u0430\u0447\u0430",
       "description": "",
       "agent": "Hermes",
       "status": "queued",
@@ -51,8 +51,8 @@
     },
     {
       "id": "T-003",
-      "title": "Test web-task: Find info about Python",
-      "description": "OpenClaw integration check",
+      "title": "\u0422\u0435\u0441\u0442\u043e\u0432\u0430\u044f \u0432\u0435\u0431-\u0437\u0430\u0434\u0430\u0447\u0430: \u041d\u0430\u0439\u0442\u0438 \u0438\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044e \u043e Python",
+      "description": "\u041f\u0440\u043e\u0432\u0435\u0440\u043a\u0430 \u0438\u043d\u0442\u0435\u0433\u0440\u0430\u0446\u0438\u0438 OpenClaw",
       "agent": "OpenClaw",
       "status": "completed",
       "priority": "medium",
@@ -67,7 +67,7 @@
         {
           "id": "a3773cde",
           "agent": "OpenClaw",
-          "command": "Starting external integration: Test web-task",
+          "command": "Starting external integration: \u0422\u0435\u0441\u0442\u043e\u0432\u0430\u044f \u0432\u0435\u0431-\u0437\u0430\u0434\u0430\u0447\u0430: \u041d\u0430\u0439\u0442\u0438 \u0438\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044e \u043e Python",
           "output": "",
           "status": "running",
           "timestamp": "2026-05-04T15:13:02.282715Z"
@@ -76,7 +76,7 @@
           "id": "99bb7044",
           "agent": "OpenClaw",
           "command": "Completed",
-          "output": "[OpenClaw Real] Exit code 1: Failed to start CLI",
+          "output": "[OpenClaw Real] Exit code 1:\n[openclaw] Failed to start CLI: Error: Unknown command: openclaw Task: \u0422\u0435\u0441\u0442\u043e\u0432\u0430\u044f \u0432\u0435\u0431-\u0437\u0430\u0434\u0430\u0447\u0430: \u041d\u0430\u0439\u0442\u0438 \u0438\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044e \u043e Python\nDescription: \u041f\u0440\u043e\u0432\u0435\u0440\u043a\u0430 \u0438\u043d\u0442\u0435\u0433\u0440\u0430\u0446\u0438\u0438 OpenClaw\n\nPlease complete this task and report the results.. No built-in command or plugin CLI metadata owns \"Task: \u0422\u0435\u0441\u0442\u043e\u0432\u0430\u044f \u0432\u0435\u0431-\u0437\u0430\u0434\u0430\u0447\u0430: \u041d\u0430\u0439\u0442\u0438 \u0438\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044e \u043e Python\nDescription: \u041f\u0440\u043e\u0432\u0435\u0440\u043a\u0430 \u0438\u043d\u0442\u0435\u0433\u0440\u0430\u0446\u0438\u0438 OpenClaw\n\nPlease complete this task and report the results.\".\n    at runCli (file:///home/minimax/.nvm/versions/node/v22.22.2/lib/node_modules/openclaw/dist/cli/run-main.js:301:29)\n    at async runMainOrRootHelp (file:///home/minimax/.nvm/versions/node/v22.22.2/lib/node_modules/openclaw/dist/entry.js:356:3)\n    at async file:///home/minimax/.nvm/versions/node/v22.22.2/lib/node_modules/openclaw/dist/entry.js:327:54\n",
           "status": "completed",
           "timestamp": "2026-05-04T15:13:06.453124Z"
         }

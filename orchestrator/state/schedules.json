@@ -1,0 +1,48 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "name": "Daily Report",
+      "task_template": {
+        "title": "Daily Report Task"
+      },
+      "schedule_type": "interval",
+      "schedule_value": "60",
+      "enabled": true,
+      "last_run": null,
+      "next_run": "2026-05-05T09:37:56.463187+00:00",
+      "created": "2026-05-05T08:37:56.463207Z"
+    },
+    {
+      "id": 2,
+      "name": "Hourly Backup",
+      "task_template": {
+        "title": "Backup Task",
+        "agent": "System",
+        "priority": "high"
+      },
+      "schedule_type": "interval",
+      "schedule_value": "60",
+      "enabled": true,
+      "last_run": null,
+      "next_run": "2026-05-05T09:43:36.603135+00:00",
+      "created": "2026-05-05T08:43:36.603152Z"
+    },
+    {
+      "id": 3,
+      "name": "Hourly Backup",
+      "task_template": {
+        "title": "Backup Task",
+        "agent": "System",
+        "priority": "high"
+      },
+      "schedule_type": "interval",
+      "schedule_value": "60",
+      "enabled": true,
+      "last_run": null,
+      "next_run": "2026-05-05T09:43:59.696425+00:00",
+      "created": "2026-05-05T08:43:59.696443Z"
+    }
+  ],
+  "next_id": 4
+}

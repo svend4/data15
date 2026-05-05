@@ -1,0 +1,42 @@
+{
+  "agents": {
+    "Hermes": {
+      "capacity": 10,
+      "current_load": 2,
+      "skills": [
+        "orchestration",
+        "coordination"
+      ]
+    },
+    "OpenClaw": {
+      "capacity": 5,
+      "current_load": 0,
+      "skills": [
+        "execution",
+        "automation"
+      ]
+    },
+    "OpenAI": {
+      "capacity": 8,
+      "current_load": 0,
+      "skills": [
+        "reasoning",
+        "analysis"
+      ]
+    }
+  },
+  "allocations": [
+    {
+      "task_id": "T-001",
+      "agent": "Hermes",
+      "allocated_at": "2026-05-05T07:37:52.002327Z",
+      "released_at": null
+    },
+    {
+      "task_id": "T-TEST-001",
+      "agent": "Hermes",
+      "allocated_at": "2026-05-05T08:44:00.157137Z",
+      "released_at": null
+    }
+  ]
+}

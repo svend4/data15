@@ -1,0 +1,25 @@
+{
+  "slas": {
+    "critical": {
+      "response_hours": 1,
+      "resolution_hours": 4,
+      "description": "Critical issues"
+    },
+    "high": {
+      "response_hours": 4,
+      "resolution_hours": 24,
+      "description": "High priority"
+    },
+    "medium": {
+      "response_hours": 24,
+      "resolution_hours": 72,
+      "description": "Medium priority"
+    },
+    "low": {
+      "response_hours": 48,
+      "resolution_hours": 168,
+      "description": "Low priority"
+    }
+  },
+  "breaches": []
+}

@@ -1,0 +1,143 @@
+{
+  "templates": [
+    {
+      "id": 1,
+      "name": "Bug Report",
+      "category": "issues",
+      "description": "Standard bug report template",
+      "fields": {
+        "title": {
+          "type": "string",
+          "required": true,
+          "label": "Bug Title"
+        },
+        "severity": {
+          "type": "select",
+          "options": [
+            "critical",
+            "high",
+            "medium",
+            "low"
+          ],
+          "default": "medium"
+        },
+        "steps": {
+          "type": "textarea",
+          "required": true,
+          "label": "Reproduction Steps"
+        },
+        "expected": {
+          "type": "textarea",
+          "label": "Expected Behavior"
+        },
+        "actual": {
+          "type": "textarea",
+          "label": "Actual Behavior"
+        }
+      },
+      "defaults": {
+        "priority": "high",
+        "tags": [
+          "bug",
+          "needs-fix"
+        ]
+      },
+      "version": 1,
+      "created": "2026-05-05T07:31:02.749210Z"
+    },
+    {
+      "id": 2,
+      "name": "Feature Request",
+      "category": "features",
+      "description": "New feature request template",
+      "fields": {
+        "title": {
+          "type": "string",
+          "required": true,
+          "label": "Feature Name"
+        },
+        "user_story": {
+          "type": "textarea",
+          "required": true,
+          "label": "User Story (As a... I want... so that...)"
+        },
+        "acceptance": {
+          "type": "textarea",
+          "label": "Acceptance Criteria"
+        },
+        "priority": {
+          "type": "select",
+          "options": [
+            "critical",
+            "high",
+            "medium",
+            "low"
+          ],
+          "default": "medium"
+        },
+        "effort": {
+          "type": "select",
+          "options": [
+            "xs",
+            "s",
+            "m",
+            "l",
+            "xl"
+          ],
+          "label": "Estimated Effort"
+        }
+      },
+      "defaults": {
+        "tags": [
+          "feature",
+          "enhancement"
+        ]
+      },
+      "version": 1,
+      "created": "2026-05-05T07:31:02.749216Z"
+    },
+    {
+      "id": 3,
+      "name": "Code Review",
+      "category": "development",
+      "description": "Code review task template",
+      "fields": {
+        "title": {
+          "type": "string",
+          "required": true,
+          "label": "PR/Commit Title"
+        },
+        "pr_url": {
+          "type": "string",
+          "required": true,
+          "label": "Pull Request URL"
+        },
+        "reviewer": {
+          "type": "string",
+          "label": "Requested Reviewer"
+        },
+        "changes_summary": {
+          "type": "textarea",
+          "label": "Summary of Changes"
+        }
+      },
+      "defaults": {
+        "priority": "medium",
+        "tags": [
+          "review",
+          "code"
+        ]
+      },
+      "version": 1,
+      "created": "2026-05-05T07:31:02.749219Z"
+    }
+  ],
+  "categories": [
+    "issues",
+    "features",
+    "development",
+    "documentation",
+    "infrastructure"
+  ],
+  "next_id": 4
+}

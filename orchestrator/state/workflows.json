@@ -1,0 +1,190 @@
+{
+  "workflows": [
+    {
+      "id": 1,
+      "name": "Test Workflow",
+      "steps": [
+        {
+          "name": "Create Task",
+          "type": "action",
+          "action": "create_task",
+          "title": "Workflow Test Task"
+        },
+        {
+          "name": "Delay",
+          "type": "delay",
+          "seconds": 0
+        },
+        {
+          "name": "Update Status",
+          "type": "action",
+          "action": "update_status",
+          "status": "in_progress"
+        }
+      ],
+      "trigger": {
+        "type": "manual"
+      },
+      "enabled": true,
+      "created": "2026-05-05T07:44:54.776338Z"
+    },
+    {
+      "id": 2,
+      "name": "Test Automation Workflow",
+      "steps": [
+        {
+          "name": "Create Task",
+          "type": "action",
+          "action": "create_task",
+          "title": "Auto Task from Workflow",
+          "critical": true
+        },
+        {
+          "name": "Notification",
+          "type": "action",
+          "action": "notify",
+          "channel": "system",
+          "message": "Workflow executed!"
+        }
+      ],
+      "trigger": {
+        "type": "manual"
+      },
+      "enabled": true,
+      "created": "2026-05-05T08:43:35.830540Z"
+    },
+    {
+      "id": 3,
+      "name": "Test Automation Workflow",
+      "steps": [
+        {
+          "name": "Create Task",
+          "type": "action",
+          "action": "create_task",
+          "title": "Auto Task from Workflow",
+          "critical": true
+        },
+        {
+          "name": "Notification",
+          "type": "action",
+          "action": "notify",
+          "channel": "system",
+          "message": "Workflow executed!"
+        }
+      ],
+      "trigger": {
+        "type": "manual"
+      },
+      "enabled": true,
+      "created": "2026-05-05T08:43:58.865741Z"
+    }
+  ],
+  "executions": [
+    {
+      "id": "WF-1-1",
+      "workflow_id": 1,
+      "workflow_name": "Test Workflow",
+      "status": "completed",
+      "started_at": "2026-05-05T07:44:54.791299Z",
+      "completed_at": "2026-05-05T07:44:54.830715Z",
+      "current_step": 2,
+      "context": {
+        "last_task_id": "T-225"
+      },
+      "results": [
+        {
+          "step": 0,
+          "step_name": "Create Task",
+          "status": "completed",
+          "result": {
+            "success": true,
+            "task_id": "T-225"
+          }
+        },
+        {
+          "step": 1,
+          "step_name": "Delay",
+          "status": "completed",
+          "result": {
+            "success": true
+          }
+        },
+        {
+          "step": 2,
+          "step_name": "Update Status",
+          "status": "completed",
+          "result": {
+            "success": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "WF-2-2",
+      "workflow_id": 2,
+      "workflow_name": "Test Automation Workflow",
+      "status": "completed",
+      "started_at": "2026-05-05T08:43:35.850056Z",
+      "completed_at": "2026-05-05T08:43:35.915036Z",
+      "current_step": 1,
+      "context": {
+        "context_var": "test_value",
+        "last_task_id": "T-226"
+      },
+      "results": [
+        {
+          "step": 0,
+          "step_name": "Create Task",
+          "status": "completed",
+          "result": {
+            "success": true,
+            "task_id": "T-226"
+          }
+        },
+        {
+          "step": 1,
+          "step_name": "Notification",
+          "status": "failed",
+          "result": {
+            "success": false,
+            "error": "'NotificationManager' object has no attribute 'send'"
+          }
+        }
+      ]
+    },
+    {
+      "id": "WF-3-3",
+      "workflow_id": 3,
+      "workflow_name": "Test Automation Workflow",
+      "status": "completed",
+      "started_at": "2026-05-05T08:43:58.881513Z",
+      "completed_at": "2026-05-05T08:43:58.928116Z",
+      "current_step": 1,
+      "context": {
+        "context_var": "test_value",
+        "last_task_id": "T-230"
+      },
+      "results": [
+        {
+          "step": 0,
+          "step_name": "Create Task",
+          "status": "completed",
+          "result": {
+            "success": true,
+            "task_id": "T-230"
+          }
+        },
+        {
+          "step": 1,
+          "step_name": "Notification",
+          "status": "failed",
+          "result": {
+            "success": false,
+            "error": "'NotificationManager' object has no attribute 'send'"
+          }
+        }
+      ]
+    }
+  ],
+  "next_id": 4
+}

@@ -1,0 +1,16 @@
+{
+  "hooks": [
+    {
+      "id": "WH-001",
+      "url": "https://example.com/webhook",
+      "name": "https://example.com/webhook",
+      "events": [
+        "task.created"
+      ],
+      "enabled": true,
+      "created": "2026-05-05T07:05:22.410346Z",
+      "trigger_count": 0
+    }
+  ],
+  "enabled": true
+}

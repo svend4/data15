@@ -252,13 +252,30 @@
       "created": "2026-05-05T00:00:00Z"
     }
   ],
+    {
+      "id": 8,
+      "name": "Stress Test",
+      "category": "testing",
+      "description": "Ephemeral load/concurrency test task — auto-deleted after completion",
+      "fields": {
+        "title": {"type": "string", "required": true, "label": "Test Name"},
+        "concurrency": {"type": "number", "default": 10, "label": "Concurrent threads"},
+        "iterations": {"type": "number", "default": 100, "label": "Total iterations"},
+        "agent": {"type": "select", "options": ["Hermes", "OpenClaw", "Test"], "default": "Test", "label": "Target Agent"}
+      },
+      "defaults": {"agent": "Test", "priority": "low", "tags": ["stress-test", "__test__"], "ephemeral": true},
+      "version": 1,
+      "created": "2026-05-05T00:00:00Z"
+    }
+  ],
   "categories": [
     "issues",
     "features",
     "development",
     "documentation",
     "infrastructure",
-    "agents"
+    "agents",
+    "testing"
   ],
-  "next_id": 8
+  "next_id": 9
 }

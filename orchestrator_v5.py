@@ -28,7 +28,7 @@ import shutil
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Callable
 from datetime import datetime, timezone, timedelta
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict, field, fields
 from enum import Enum
 from functools import lru_cache, wraps
 from collections import defaultdict
@@ -551,13 +551,15 @@ class Task:
     max_retries: int = 3
     created_by: str = "system"
     cached_result: Optional[str] = None
+    ephemeral: bool = False
 
     def to_dict(self) -> dict:
         return asdict(self)
 
     @classmethod
     def from_dict(cls, data: dict) -> 'Task':
-        return cls(**data)
+        known = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in known})
 
 # ============================================================================
 # IMPROVEMENT: Task History/Audit Log
@@ -1096,6 +1098,11 @@ class BoardManager:
                     # Generate ID
                     task_id = f"T-{data['stats']['total'] + 1:03d}"
 
+                    tags = list(kwargs.get('tags', []))
+                    ephemeral = bool(kwargs.get('ephemeral', False))
+                    if ephemeral and '__test__' not in tags:
+                        tags.append('__test__')
+
                     task = Task(
                         id=task_id,
                         title=title,
@@ -1109,10 +1116,11 @@ class BoardManager:
                         dependencies=kwargs.get('dependencies', []),
                         layer=kwargs.get('layer', 'execution'),
                         complexity=kwargs.get('complexity', 5),
-                        tags=kwargs.get('tags', []),
+                        tags=tags,
                         retry_count=0,
                         max_retries=kwargs.get('max_retries', 3),
-                        created_by=kwargs.get('created_by', 'system')
+                        created_by=kwargs.get('created_by', 'system'),
+                        ephemeral=ephemeral,
                     )
                     data['tasks'].append(task.to_dict())
                     data['stats']['total'] += 1
@@ -1139,15 +1147,22 @@ class BoardManager:
                 fcntl.flock(lf.fileno(), fcntl.LOCK_EX)
                 try:
                     data = self._load()
+                    terminal = status in ('completed', 'failed')
                     for t in data['tasks']:
                         if t['id'] == task_id:
                             old = t['status']
-                            t['status'] = status
-                            t['updated'] = get_utc_timestamp()
-                            if progress is not None:
-                                t['progress'] = progress
-                            data['stats'][old] = max(0, data['stats'].get(old, 1) - 1)
-                            data['stats'][status] = data['stats'].get(status, 0) + 1
+                            if t.get('ephemeral') and terminal:
+                                # Auto-delete: remove task and fix stats
+                                data['tasks'].remove(t)
+                                data['stats'][old] = max(0, data['stats'].get(old, 1) - 1)
+                                data['stats']['total'] = max(0, data['stats'].get('total', 1) - 1)
+                            else:
+                                t['status'] = status
+                                t['updated'] = get_utc_timestamp()
+                                if progress is not None:
+                                    t['progress'] = progress
+                                data['stats'][old] = max(0, data['stats'].get(old, 1) - 1)
+                                data['stats'][status] = data['stats'].get(status, 0) + 1
                             self._atomic_save(data)
                             return True
                     return False
@@ -1196,10 +1211,12 @@ class BoardManager:
                 finally:
                     fcntl.flock(lf.fileno(), fcntl.LOCK_UN)
 
-    def list_tasks(self, status: str = None) -> List[Task]:
-        """Lock-free read"""
+    def list_tasks(self, status: str = None, show_test: bool = False) -> List[Task]:
+        """Lock-free read. By default hides ephemeral/__test__ tasks."""
         data = self._load()
         tasks = [Task.from_dict(t) for t in data['tasks']]
+        if not show_test:
+            tasks = [t for t in tasks if '__test__' not in t.tags]
         if status:
             tasks = [t for t in tasks if t.status == status]
         return tasks
@@ -1453,27 +1470,33 @@ Board Stats:
 
         return "\n".join(lines)
 
-    def cmd_board(self) -> str:
+    def cmd_board(self, show_all: bool = False) -> str:
         stats = self.board.get_stats()
+        label = "TASK BOARD (v5.0)" + (" [ALL incl. test]" if show_all else "")
         lines = [
             "=" * 60,
-            "📋 TASK BOARD (v5.0)",
+            f"📋 {label}",
             "=" * 60,
             f"Stats: Total={stats['total']} | Done={stats['completed']}",
             "",
             "🔴 BLOCKED:",
         ]
-        for t in self.board.list_tasks("blocked"):
+        for t in self.board.list_tasks("blocked", show_test=show_all):
             lines.append(f"  🚫 [{t.id}] {t.title}")
         lines.extend(["", "🟡 QUEUED:"])
-        for t in self.board.list_tasks("queued"):
+        for t in self.board.list_tasks("queued", show_test=show_all):
             lines.append(f"  ⏳ [{t.id}] {t.title} → {t.agent}")
         lines.extend(["", "🔵 RUNNING:"])
-        for t in self.board.list_tasks("running"):
+        for t in self.board.list_tasks("running", show_test=show_all):
             lines.append(f"  🔄 [{t.id}] {t.title} [{t.progress}%]")
         lines.extend(["", "🟢 COMPLETED:"])
-        for t in self.board.list_tasks("completed"):
+        for t in self.board.list_tasks("completed", show_test=show_all):
             lines.append(f"  ✅ [{t.id}] {t.title}")
+        if not show_all:
+            test_count = len([t for t in self.board.list_tasks(show_test=True)
+                              if '__test__' in t.tags])
+            if test_count:
+                lines.append(f"\n  (+ {test_count} ephemeral/__test__ tasks hidden — use /board --all to show)")
         lines.append("=" * 60)
         return "\n".join(lines)
 
@@ -2151,8 +2174,9 @@ Users: {len(self.rbac.users)}
         return f"""Hybrid Orchestrator v5.0 - PRODUCTION
 {sep}
 TASK MANAGEMENT:
-  /board              - Show task board
-  /add <title>        - Add new task
+  /board              - Show task board (hides __test__ tasks)
+  /board --all        - Show all tasks including ephemeral/__test__
+  /add <title>        - Add new task  (use ephemeral=true to auto-delete)
   /analyze <topic>    - Hermes analysis (cached)
   /research <query>   - OpenClaw external research (cached)
   /both <topic>       - Both agents in parallel
@@ -2261,7 +2285,8 @@ def main():
 
     # Tasks
     if cmd in ['/board', 'board']:
-        print(orch.cmd_board())
+        show_all = '--all' in cmd_args
+        print(orch.cmd_board(show_all=show_all))
         return
     if cmd in ['/add', 'add']:
         title = ' '.join(cmd_args)
@@ -4493,10 +4518,25 @@ class TaskTemplatesLibrary:
                 "defaults": {"agent": "Hermes", "priority": "high", "tags": ["pipeline", "multi-agent", "full"]},
                 "version": 1,
                 "created": get_utc_timestamp()
+            },
+            {
+                "id": 8,
+                "name": "Stress Test",
+                "category": "testing",
+                "description": "Ephemeral load/concurrency test task — auto-deleted after completion",
+                "fields": {
+                    "title": {"type": "string", "required": True, "label": "Test Name"},
+                    "concurrency": {"type": "number", "default": 10, "label": "Concurrent threads"},
+                    "iterations": {"type": "number", "default": 100, "label": "Total iterations"},
+                    "agent": {"type": "select", "options": ["Hermes", "OpenClaw", "Test"], "default": "Test", "label": "Target Agent"}
+                },
+                "defaults": {"agent": "Test", "priority": "low", "tags": ["stress-test", "__test__"], "ephemeral": True},
+                "version": 1,
+                "created": get_utc_timestamp()
             }
         ]
-        self.templates["categories"] = ["issues", "features", "development", "documentation", "infrastructure", "agents"]
-        self.templates["next_id"] = 8
+        self.templates["categories"] = ["issues", "features", "development", "documentation", "infrastructure", "agents", "testing"]
+        self.templates["next_id"] = 9
         self._save()
 
     def add_template(self, name: str, category: str, fields: dict,

@@ -1,10 +1,10 @@
 {
   "version": "5.0",
   "created": "2026-05-05T00:00:00Z",
-  "updated": "2026-05-05T18:51:12.249663Z",
+  "updated": "2026-05-05T19:00:54.114064Z",
   "stats": {
-    "total": 20,
-    "queued": 16,
+    "total": 21,
+    "queued": 17,
     "running": 0,
     "completed": 4,
     "failed": 0
@@ -418,6 +418,28 @@
       "max_retries": 3,
       "created_by": "system",
       "cached_result": null
+    },
+    {
+      "id": "T-021",
+      "title": "Hidden test task",
+      "description": "",
+      "agent": "Test",
+      "status": "queued",
+      "priority": "medium",
+      "created": "2026-05-05T19:00:54.113966Z",
+      "updated": "2026-05-05T19:00:54.113986Z",
+      "progress": 0,
+      "dependencies": [],
+      "layer": "execution",
+      "complexity": 5,
+      "tags": [
+        "__test__"
+      ],
+      "retry_count": 0,
+      "max_retries": 3,
+      "created_by": "system",
+      "cached_result": null,
+      "ephemeral": false
     }
   ]
 }

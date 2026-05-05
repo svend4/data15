@@ -1,6 +1,6 @@
 #!/bin/bash
 echo "==================================="
-echo "Multi-Agent Hybrid Orchestrator v5.0"
+echo "Multi-Agent Orchestrator v5.0"
 echo "==================================="
 STATE_DIR="${STATE_DIR:-state}"
 PORT="${PORT:-5000}"

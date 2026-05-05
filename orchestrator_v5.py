@@ -865,69 +865,91 @@ class ConfigManager:
 
 
 class CacheManager:
-    def __init__(self, ttl: int = 3600):
+    """Unified cache: file-persisted entries + in-memory TTL + hit/miss stats.
+    API: get(key), set(key, value, ttl=None), invalidate(key), clear(), get_stats().
+    Use HybridOrchestrator._cache_key(prefix, data) to build keys."""
+
+    def __init__(self, default_ttl: int = 3600):
         self.cache_file = CACHE_DIR / "results_cache.json"
-        self.ttl = ttl
-        self.lock = threading.Lock()
-        self._load_cache()
+        self.default_ttl = default_ttl
+        self._lock = threading.Lock()
+        self._load()
 
-    def _load_cache(self):
-        if self.cache_file.exists():
-            try:
+    def _load(self):
+        try:
+            if self.cache_file.exists():
                 with open(self.cache_file, 'r') as f:
-                    self.cache = json.load(f)
-            except Exception:
-                self.cache = {"entries": {}, "stats": {"hits": 0, "misses": 0}}
-        else:
-            self.cache = {"entries": {}, "stats": {"hits": 0, "misses": 0}}
+                    raw = json.load(f)
+                # Support both legacy {"entries":{}} and new flat format
+                self._cache = raw.get("entries", raw) if isinstance(raw, dict) else {}
+                s = raw.get("stats", {})
+                self._hits = s.get("hits", 0)
+                self._misses = s.get("misses", 0)
+                return
+        except Exception:
+            pass
+        self._cache: Dict[str, dict] = {}
+        self._hits = 0
+        self._misses = 0
 
-    def _save_cache(self):
-        with self.lock:
-            with open(self.cache_file, 'w') as f:
-                json.dump(self.cache, f, indent=2)
+    def _save(self):
+        tmp = self.cache_file.with_suffix('.tmp')
+        with open(tmp, 'w') as f:
+            json.dump({
+                "entries": self._cache,
+                "stats": {"hits": self._hits, "misses": self._misses}
+            }, f, indent=2)
+        os.replace(tmp, self.cache_file)
 
-    def _generate_key(self, prefix: str, data: str) -> str:
-        hash_val = hashlib.md5(data.encode()).hexdigest()[:12]
-        return f"{prefix}:{hash_val}"
+    def get(self, key: str) -> Optional[Any]:
+        with self._lock:
+            entry = self._cache.get(key)
+            if entry is None:
+                self._misses += 1
+                return None
+            if time.time() > entry.get("expires", float("inf")):
+                del self._cache[key]
+                self._misses += 1
+                self._save()
+                return None
+            entry["hits"] = entry.get("hits", 0) + 1
+            self._hits += 1
+            self._save()
+            return entry["value"]
 
-    def get(self, prefix: str, data: str) -> Optional[Any]:
-        key = self._generate_key(prefix, data)
-        entry = self.cache["entries"].get(key)
-        if entry is None:
-            self.cache["stats"]["misses"] += 1
-            return None
-        cached_time = datetime.fromisoformat(entry["timestamp"])
-        now = datetime.now(timezone.utc)
-        if (now - cached_time).total_seconds() > self.ttl:
-            del self.cache["entries"][key]
-            self.cache["stats"]["misses"] += 1
-            self._save_cache()
-            return None
-        self.cache["stats"]["hits"] += 1
-        self._save_cache()
-        return entry["result"]
+    def set(self, key: str, value: Any, ttl: int = None):
+        with self._lock:
+            self._cache[key] = {
+                "value": value,
+                "expires": time.time() + (ttl or self.default_ttl),
+                "created": time.time(),
+                "hits": 0,
+            }
+            self._save()
 
-    def set(self, prefix: str, data: str, result: Any):
-        key = self._generate_key(prefix, data)
-        self.cache["entries"][key] = {
-            "result": result,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "key": key
-        }
-        self._save_cache()
+    def invalidate(self, key: str) -> bool:
+        with self._lock:
+            if key in self._cache:
+                del self._cache[key]
+                self._save()
+                return True
+            return False
 
     def clear(self):
-        self.cache = {"entries": {}, "stats": {"hits": 0, "misses": 0}}
-        self._save_cache()
+        with self._lock:
+            self._cache.clear()
+            self._hits = self._misses = 0
+            self._save()
 
     def get_stats(self) -> dict:
-        total = self.cache["stats"]["hits"] + self.cache["stats"]["misses"]
-        hit_rate = (self.cache["stats"]["hits"] / total * 100) if total > 0 else 0
+        total = self._hits + self._misses
+        hit_rate = (self._hits / total * 100) if total > 0 else 0.0
         return {
-            "entries": len(self.cache["entries"]),
-            "hits": self.cache["stats"]["hits"],
-            "misses": self.cache["stats"]["misses"],
-            "hit_rate": f"{hit_rate:.1f}%"
+            "entries": len(self._cache),
+            "hits": self._hits,
+            "misses": self._misses,
+            "hit_rate": f"{hit_rate:.1f}%",
+            "total_hits": self._hits,
         }
 
 
@@ -1298,7 +1320,7 @@ class HybridOrchestrator:
         self.events = EventBus()
         self.rate_limiter = RateLimiter(**self.config.get_rate_limit())
         self.retry_handler = RetryHandler(**self.config.get_retry_config())
-        self.metrics = metrics  # Prometheus metrics
+        self.metrics_collector = metrics  # Prometheus MetricsCollector (module-level singleton)
         self.circuit_breaker = CircuitBreaker()  # API protection
         self.deduplicator = RequestDeduplicator()  # Request deduplication
         self.shutdown_handler = GracefulShutdownHandler(self)  # Graceful shutdown
@@ -1314,7 +1336,7 @@ class HybridOrchestrator:
         })
 
         # Record startup metric
-        self.metrics.inc_counter("orchestrator_startups")
+        self.metrics_collector.inc_counter("orchestrator_startups")
 
     def _load_state(self) -> OrchestratorState:
         if STATE_FILE.exists():
@@ -1423,7 +1445,7 @@ Board Stats:
 
     def cmd_metrics(self) -> str:
         """Show Prometheus metrics"""
-        m = self.metrics.get_metrics()
+        m = self.metrics_collector.get_metrics()
         cb = self.circuit_breaker.get_state()
         dedup = self.deduplicator.get_stats()
         rl = self.rate_limiter
@@ -2534,270 +2556,176 @@ def main():
     print("Use /help for available commands")
 
 
+
 # ============================================================================
-# IMPROVEMENT: REST API (Flask)
+# REST API (stdlib http.server — no external deps)
 # ============================================================================
+
+import re as _re
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
+
 
 class RestAPI:
     """
-    Flask REST API for orchestrator.
-    Usage:
-        api = RestAPI()
-        api.run(host='0.0.0.0', port=5000)
+    REST API built on stdlib http.server — no Flask required.
+    Endpoints: /api/health /api/status /api/tasks /api/search
+               /api/metrics /api/stats /api/events /api/workflows
     """
 
-    def __init__(self, orchestrator: HybridOrchestrator = None):
-        try:
-            from flask import Flask, jsonify, request
-            self.Flask = Flask
-            self.jsonify = jsonify
-            self.request = request
-            self._flask_available = True
-        except ImportError:
-            self._flask_available = False
-            print("⚠️ Flask not installed. Run: pip install flask")
-            return
-
-        self.app = self.Flask(__name__)
-        self.app.config['JSON_SORT_KEYS'] = False
+    def __init__(self, orchestrator=None):
         self.orch = orchestrator or HybridOrchestrator()
 
-        self._setup_routes()
+    def run(self, host: str = '0.0.0.0', port: int = 5000):
+        orch = self.orch
 
-    def _setup_routes(self):
-        """Setup API routes"""
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self, fmt, *args):
+                pass
 
-        @self.app.route('/api/health', methods=['GET'])
-        def health():
-            """Health check endpoint"""
-            return self.jsonify({
-                "status": "ok",
-                "version": "5.0",
-                "timestamp": get_utc_timestamp()
-            })
+            def _send(self, code, body, content_type='application/json'):
+                if isinstance(body, (dict, list)):
+                    raw = json.dumps(body, ensure_ascii=False).encode()
+                elif isinstance(body, str):
+                    raw = body.encode()
+                else:
+                    raw = body
+                self.send_response(code)
+                self.send_header('Content-Type', content_type)
+                self.send_header('Content-Length', str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
 
-        @self.app.route('/api/status', methods=['GET'])
-        def status():
-            """Get orchestrator status"""
-            stats = self.orch.board.get_stats()
-            return self.jsonify({
-                "version": "5.0",
-                "mode": self.orch.state.mode,
-                "stats": stats,
-                "agents": self.orch.state.agents
-            })
+            def _read_json(self):
+                length = int(self.headers.get('Content-Length', 0))
+                return json.loads(self.rfile.read(length)) if length else {}
 
-        # === Tasks ===
+            def _param(self, key, default=None):
+                qs = parse_qs(urlparse(self.path).query)
+                return qs.get(key, [default])[0]
 
-        @self.app.route('/api/tasks', methods=['GET'])
-        def list_tasks():
-            """List all tasks"""
-            status = self.request.args.get('status')
-            tasks = self.orch.board.list_tasks(status)
-            return self.jsonify({
-                "tasks": [t.to_dict() for t in tasks],
-                "count": len(tasks)
-            })
+            def do_GET(self):
+                path = urlparse(self.path).path.rstrip('/')
 
-        @self.app.route('/api/tasks', methods=['POST'])
-        def create_task():
-            """Create a new task"""
-            data = self.request.get_json() or {}
-            title = data.get('title', 'Untitled')
-            task = self.orch.board.add_task(
-                title=title,
-                agent=data.get('agent', 'Hermes'),
-                priority=data.get('priority', 'medium'),
-                tags=data.get('tags', []),
-                description=data.get('description', '')
-            )
-            self.orch.history.add_entry(task.id, "created_via_api")
-            return self.jsonify(task.to_dict()), 201
+                if path == '/api/health':
+                    self._send(200, {"status": "ok", "version": "5.0",
+                                     "timestamp": get_utc_timestamp()})
+                elif path == '/api/status':
+                    self._send(200, {"version": "5.0",
+                                     "mode": orch.state.mode,
+                                     "stats": orch.board.get_stats(),
+                                     "agents": orch.state.agents})
+                elif path == '/api/tasks':
+                    status_filter = self._param('status')
+                    tasks = orch.board.list_tasks(status_filter)
+                    self._send(200, {"tasks": [t.to_dict() for t in tasks],
+                                     "count": len(tasks)})
+                elif path == '/api/history':
+                    limit = int(self._param('limit', 50))
+                    self._send(200, {"history": orch.history.get_recent(limit)})
+                elif path == '/api/search':
+                    tags_raw = self._param('tags')
+                    result = orch.cmd_search(
+                        self._param('q', ''), self._param('status'),
+                        self._param('agent'),
+                        tags_raw.split(',') if tags_raw else None,
+                        self._param('priority'))
+                    self._send(200, {"result": result})
+                elif path == '/api/metrics':
+                    self._send(200, orch.metrics_exporter.get_prometheus_format(),
+                               'text/plain; charset=utf-8')
+                elif path == '/api/stats':
+                    self._send(200, {"board": orch.board.get_stats(),
+                                     "cache": orch.cache.get_stats(),
+                                     "circuit_breaker": orch.circuit_breaker.get_state()})
+                elif path == '/api/events':
+                    limit = int(self._param('limit', 50))
+                    self._send(200, {"events": orch.events.get_events(
+                        self._param('type'), limit)})
+                elif path == '/api/workflows':
+                    wf = WorkflowEngine(orch)
+                    self._send(200, {"workflows": wf.workflows.get("workflows", [])})
+                else:
+                    m = _re.fullmatch(r'/api/tasks/([^/]+)', path)
+                    if m:
+                        task = orch.board.get_task(m.group(1))
+                        self._send(200 if task else 404,
+                                   task.to_dict() if task else {"error": "Not found"})
+                        return
+                    m2 = _re.fullmatch(r'/api/tasks/([^/]+)/history', path)
+                    if m2:
+                        self._send(200, {"history": orch.history.get_task_history(m2.group(1))})
+                        return
+                    self._send(404, {"error": "Not found", "path": path})
 
-        @self.app.route('/api/tasks/<task_id>', methods=['GET'])
-        def get_task(task_id):
-            """Get task by ID"""
-            task = self.orch.board.get_task(task_id)
-            if not task:
-                return self.jsonify({"error": "Task not found"}), 404
-            return self.jsonify(task.to_dict())
+            def do_POST(self):
+                path = urlparse(self.path).path.rstrip('/')
+                if path == '/api/tasks':
+                    data = self._read_json()
+                    task = orch.board.add_task(
+                        title=data.get('title', 'Untitled'),
+                        agent=data.get('agent', 'Hermes'),
+                        priority=data.get('priority', 'medium'),
+                        tags=data.get('tags', []),
+                        description=data.get('description', ''),
+                        ephemeral=data.get('ephemeral', False))
+                    orch.history.add_entry(task.id, "created_via_api")
+                    self._send(201, task.to_dict())
+                else:
+                    m = _re.fullmatch(r'/api/tasks/([^/]+)/comments', path)
+                    if m:
+                        data = self._read_json()
+                        comment = orch.comments.add_comment(
+                            m.group(1), data.get('content', ''), data.get('author', 'api'))
+                        self._send(201, comment)
+                        return
+                    m2 = _re.fullmatch(r'/api/workflows/(\d+)/run', path)
+                    if m2:
+                        data = self._read_json()
+                        wf = WorkflowEngine(orch)
+                        result = wf.execute_workflow(int(m2.group(1)),
+                                                     {"goal": data.get('goal', '')})
+                        self._send(200, result)
+                        return
+                    self._send(404, {"error": "Not found"})
 
-        @self.app.route('/api/tasks/<task_id>', methods=['PUT', 'PATCH'])
-        def update_task(task_id):
-            """Update task"""
-            data = self.request.get_json() or {}
-            task = self.orch.board.get_task(task_id)
-            if not task:
-                return self.jsonify({"error": "Task not found"}), 404
+            def do_PUT(self):
+                self.do_PATCH()
 
-            if 'status' in data:
-                self.orch.board.update_status(task_id, data['status'], data.get('progress'))
-            if 'priority' in data:
-                task.priority = data['priority']
-                self.orch.board.update_task(task)
+            def do_PATCH(self):
+                path = urlparse(self.path).path.rstrip('/')
+                m = _re.fullmatch(r'/api/tasks/([^/]+)', path)
+                if m:
+                    data = self._read_json()
+                    task_id = m.group(1)
+                    task = orch.board.get_task(task_id)
+                    if not task:
+                        self._send(404, {"error": "Not found"})
+                        return
+                    if 'status' in data:
+                        orch.board.update_status(task_id, data['status'], data.get('progress'))
+                    if 'priority' in data:
+                        task.priority = data['priority']
+                        orch.board.update_task(task)
+                    orch.history.add_entry(task_id, "updated_via_api", data)
+                    refreshed = orch.board.get_task(task_id)
+                    self._send(200, refreshed.to_dict() if refreshed else {"deleted": True})
+                else:
+                    self._send(404, {"error": "Not found"})
 
-            self.orch.history.add_entry(task_id, "updated_via_api", data)
-            return self.jsonify(task.to_dict())
+            def do_DELETE(self):
+                path = urlparse(self.path).path.rstrip('/')
+                m = _re.fullmatch(r'/api/tasks/([^/]+)', path)
+                if m:
+                    ok = orch.board.delete_task(m.group(1))
+                    self._send(200 if ok else 404,
+                               {"success": True} if ok else {"error": "Not found"})
+                else:
+                    self._send(404, {"error": "Not found"})
 
-        @self.app.route('/api/tasks/<task_id>', methods=['DELETE'])
-        def delete_task(task_id):
-            """Delete task"""
-            success = self.orch.board.delete_task(task_id)
-            if success:
-                self.orch.history.add_entry(task_id, "deleted_via_api")
-                return self.jsonify({"success": True})
-            return self.jsonify({"error": "Task not found"}), 404
-
-        # === Search ===
-
-        @self.app.route('/api/search', methods=['GET'])
-        def search():
-            """Search tasks"""
-            query = self.request.args.get('q', '')
-            status = self.request.args.get('status')
-            agent = self.request.args.get('agent')
-            priority = self.request.args.get('priority')
-            tags = self.request.args.get('tags', '').split(',') if self.request.args.get('tags') else None
-
-            result = self.orch.cmd_search(query, status, agent, tags, priority)
-            return self.jsonify({"result": result})
-
-        # === Comments ===
-
-        @self.app.route('/api/tasks/<task_id>/comments', methods=['GET'])
-        def get_comments(task_id):
-            """Get task comments"""
-            comments = self.orch.comments.get_comments(task_id)
-            return self.jsonify({"comments": comments})
-
-        @self.app.route('/api/tasks/<task_id>/comments', methods=['POST'])
-        def add_comment(task_id):
-            """Add comment to task"""
-            data = self.request.get_json() or {}
-            content = data.get('content', '')
-            author = data.get('author', 'api')
-            comment = self.orch.comments.add_comment(task_id, content, author)
-            self.orch.history.add_entry(task_id, "comment_added_via_api")
-            return self.jsonify(comment), 201
-
-        # === History ===
-
-        @self.app.route('/api/tasks/<task_id>/history', methods=['GET'])
-        def get_task_history(task_id):
-            """Get task history"""
-            history = self.orch.history.get_task_history(task_id)
-            return self.jsonify({"history": history})
-
-        @self.app.route('/api/history', methods=['GET'])
-        def get_history():
-            """Get recent history"""
-            limit = int(self.request.args.get('limit', 50))
-            history = self.orch.history.get_recent(limit)
-            return self.jsonify({"history": history})
-
-        # === Metrics ===
-
-        @self.app.route('/api/metrics', methods=['GET'])
-        def get_metrics():
-            """Get Prometheus metrics"""
-            return self.orch.metrics.export_prometheus(), 200, {'Content-Type': 'text/plain'}
-
-        @self.app.route('/api/stats', methods=['GET'])
-        def get_stats():
-            """Get detailed statistics"""
-            stats = self.orch.board.get_stats()
-            metrics = self.orch.metrics.get_metrics()
-            cache_stats = self.orch.cache.get_stats()
-            return self.jsonify({
-                "board": stats,
-                "metrics": metrics,
-                "cache": cache_stats,
-                "rate_limiter": {
-                    "max_requests": self.orch.rate_limiter.max_requests,
-                    "window": self.orch.rate_limiter.window_seconds
-                },
-                "circuit_breaker": self.orch.circuit_breaker.get_state()
-            })
-
-        # === Templates ===
-
-        @self.app.route('/api/templates', methods=['GET'])
-        def list_templates():
-            """List task templates"""
-            templates = self.orch._load_templates()
-            return self.jsonify({"templates": templates})
-
-        @self.app.route('/api/templates/<template_name>', methods=['POST'])
-        def use_template(template_name):
-            """Create task from template"""
-            data = self.request.get_json() or {}
-            title = data.get('title')
-            task = self.orch.cmd_template_use(template_name, title)
-            return self.jsonify({"result": task}), 201
-
-        # === Events ===
-
-        @self.app.route('/api/events', methods=['GET'])
-        def get_events():
-            """Get recent events"""
-            event_type = self.request.args.get('type')
-            limit = int(self.request.args.get('limit', 50))
-            events = self.orch.events.get_events(event_type, limit)
-            return self.jsonify({"events": events})
-
-        # === Notifications ===
-
-        @self.app.route('/api/notifications', methods=['GET'])
-        def get_notifications():
-            """Get notifications"""
-            unread_only = self.request.args.get('unread', 'false').lower() == 'true'
-            limit = int(self.request.args.get('limit', 50))
-            notifications = self.orch.notifications.get_notifications(unread_only, limit)
-            return self.jsonify({"notifications": notifications, "unread": self.orch.notifications.get_unread_count()})
-
-        @self.app.route('/api/notifications/<int:notif_id>/read', methods=['POST'])
-        def mark_notification_read(notif_id):
-            """Mark notification as read"""
-            success = self.orch.notifications.mark_read(notif_id)
-            return self.jsonify({"success": success})
-
-        # === Filters ===
-
-        @self.app.route('/api/filters/facets', methods=['GET'])
-        def get_facets():
-            """Get filter facets"""
-            facets = self.orch.filters.get_facets()
-            return self.jsonify({"facets": facets})
-
-        @self.app.route('/api/filters/saved', methods=['GET'])
-        def get_saved_filters():
-            """Get saved filters"""
-            return self.jsonify({"filters": self.orch.filters.get_saved_filters()})
-
-        # === Tags ===
-
-        @self.app.route('/api/tags', methods=['GET'])
-        def get_tags():
-            """Get tags with metadata"""
-            tags = self.orch.tags_manager.get_popular_tags()
-            return self.jsonify({"tags": [{"name": t[0], "count": t[1]} for t in tags]})
-
-        # === Auto-assign ===
-
-        @self.app.route('/api/auto-assign/rules', methods=['GET'])
-        def get_auto_assign_rules():
-            """Get auto-assign rules"""
-            return self.jsonify(self.orch.auto_assign.get_stats())
-
-    def run(self, host: str = '0.0.0.0', port: int = 5000, debug: bool = False):
-        """Run the Flask server"""
-        if not self._flask_available:
-            print("❌ Flask not available. Cannot start API server.")
-            return
-
-        print(f"🚀 Starting REST API on {host}:{port}")
-        print(f"   Documentation: http://{host}:{port}/api/health")
-        self.app.run(host=host, port=port, debug=debug)
+        server = HTTPServer((host, port), Handler)
+        print(f"REST API started on http://{host}:{port}/api/health  (stdlib, no Flask)")
+        server.serve_forever()
 
 
 def run_api_server(host: str = '0.0.0.0', port: int = 5000):
@@ -6449,133 +6377,6 @@ class APIDocumentation:
         return "\n".join(lines)
 
 
-# Add dashboard and webhook to HybridOrchestrator
-def _add_orchestrator_extensions():
-    """Add dashboard and webhook to orchestrator instance"""
-    if not hasattr(HybridOrchestrator, '_extended'):
-        HybridOrchestrator.dashboard = property(lambda self: StatisticsDashboard(self))
-        HybridOrchestrator.webhooks = property(lambda self: WebhookManager(self))
-        HybridOrchestrator.dependencies = property(lambda self: TaskDependencyGraph(self))
-        HybridOrchestrator.executor = AsyncTaskExecutor(max_workers=5)
-        HybridOrchestrator.timeline = property(lambda self: TaskTimeline(self))
-        HybridOrchestrator.priority_queue = property(lambda self: PriorityTaskQueue(self))
-        HybridOrchestrator.notifications = property(lambda self: NotificationManager(self))
-        HybridOrchestrator.filters = property(lambda self: TaskFilters(self))
-        HybridOrchestrator.auto_assign = property(lambda self: AutoAssignRules(self))
-        HybridOrchestrator.tags_manager = property(lambda self: TagsManager(self))
-        HybridOrchestrator.recurring = property(lambda self: RecurringTaskManager(self))
-        HybridOrchestrator.activity_feed = property(lambda self: ActivityFeed(self))
-        HybridOrchestrator.batch_ops = property(lambda self: BatchOperations(self))
-        HybridOrchestrator.migration = property(lambda self: DataMigration(self))
-        HybridOrchestrator.performance = property(lambda self: PerformanceMonitor(self))
-        HybridOrchestrator.templates = property(lambda self: TaskTemplatesLibrary(self))
-        HybridOrchestrator.time_tracker = property(lambda self: TimeTracker(self))
-        HybridOrchestrator.sla_monitor = property(lambda self: SLAMonitor(self))
-        HybridOrchestrator.resources = property(lambda self: ResourceManager(self))
-        HybridOrchestrator.audit = property(lambda self: AuditTrail(self))
-        HybridOrchestrator.websocket = property(lambda self: WebSocketManager(self))
-        HybridOrchestrator.workflows = property(lambda self: WorkflowEngine(self))
-        HybridOrchestrator.knowledge = property(lambda self: KnowledgeBase(self))
-        HybridOrchestrator.api_limiter = APIRateLimiter()
-        HybridOrchestrator.health = property(lambda self: HealthChecker(self))
-        HybridOrchestrator.integrations = property(lambda self: IntegrationHub(self))
-        HybridOrchestrator.scheduler = property(lambda self: TaskScheduler(self))
-        HybridOrchestrator.metrics = property(lambda self: MetricsExporter(self))
-        HybridOrchestrator.api_docs = APIDocumentation()
-        HybridOrchestrator._extended = True
-
-
-# ============================================================================
-# IMPROVEMENT: Caching Layer
-# ============================================================================
-
-class CacheManager:
-    """
-    In-memory cache with TTL support for improved performance.
-    Supports: TTL, LRU eviction, cache invalidation.
-    """
-
-    def __init__(self, default_ttl: int = 300):
-        self._cache: Dict[str, dict] = {}
-        self.default_ttl = default_ttl
-        self._lock = threading.Lock()
-
-    def get(self, key: str) -> Optional[Any]:
-        """Get value from cache"""
-        with self._lock:
-            if key not in self._cache:
-                return None
-            entry = self._cache[key]
-            if time.time() > entry["expires"]:
-                del self._cache[key]
-                return None
-            entry["hits"] += 1
-            return entry["value"]
-
-    def set(self, key: str, value: Any, ttl: int = None):
-        """Set value in cache"""
-        with self._lock:
-            self._cache[key] = {
-                "value": value,
-                "expires": time.time() + (ttl or self.default_ttl),
-                "created": time.time(),
-                "hits": 0
-            }
-
-    def invalidate(self, key: str) -> bool:
-        """Invalidate cache entry"""
-        with self._lock:
-            if key in self._cache:
-                del self._cache[key]
-                return True
-            return False
-
-    def clear(self):
-        """Clear all cache"""
-        with self._lock:
-            self._cache.clear()
-
-    def get_stats(self) -> dict:
-        """Get cache statistics"""
-        total_hits = sum(e["hits"] for e in self._cache.values())
-        return {"entries": len(self._cache), "total_hits": total_hits}
-
-
-# ============================================================================
-# IMPROVEMENT: Prometheus Metrics Export
-# ============================================================================
-
-class MetricsExporter:
-    """
-    Export metrics in Prometheus format.
-    """
-
-    def __init__(self, orchestrator: HybridOrchestrator):
-        self.orch = orchestrator
-        self._metrics: Dict[str, float] = {}
-
-    def _safe_metric_name(self, name: str) -> str:
-        return name.replace(" ", "_").replace("-", "_").lower()
-
-    def record_counter(self, name: str, value: float = 1):
-        key = self._safe_metric_name(name)
-        self._metrics[key] = self._metrics.get(key, 0) + value
-
-    def record_gauge(self, name: str, value: float):
-        key = self._safe_metric_name(name)
-        self._metrics[key] = value
-
-    def get_prometheus_format(self) -> str:
-        """Export metrics in Prometheus text format"""
-        lines = ['# HELP orchestrator_info Orchestrator info', '# TYPE orchestrator_info gauge', 'orchestrator_info{version="5.0"} 1']
-        stats = self.orch.board.get_stats()
-        lines.append(f'orchestrator_tasks_total {stats.get("total", 0)}')
-        for status, count in stats.items():
-            if status != "total":
-                lines.append(f'orchestrator_tasks_by_status{{status="{status}"}} {count}')
-        for name, value in self._metrics.items():
-            lines.append(f'orchestrator_{name} {value}')
-        return "\n".join(lines)
 
 
 # ============================================================================
@@ -6764,6 +6565,7 @@ def _add_orchestrator_extensions():
         HybridOrchestrator.integrations = property(lambda self: IntegrationHub(self))
         HybridOrchestrator.scheduler = property(lambda self: TaskScheduler(self))
         HybridOrchestrator.metrics_exporter = property(lambda self: MetricsExporter(self))
+        HybridOrchestrator.metrics = property(lambda self: MetricsExporter(self))
         HybridOrchestrator.api_docs = APIDocumentation()
         HybridOrchestrator.extended_comments = property(lambda self: ExtendedComments(self))
         HybridOrchestrator.reports = property(lambda self: ReportGenerator(self))

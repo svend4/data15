@@ -1,5 +1,5 @@
 {
-  "openai_api_key": "REDACTED",
+  "openai_api_key": "",
   "api_provider": "openai",
   "openclaw_enabled": true,
   "cache_enabled": true,

@@ -85,12 +85,26 @@ celerybeat-schedule
 
 # Environments
 .env
+.env.*
+!.env.example
 .venv
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Secrets — never commit
+secrets.json
+credentials.json
+*.key
+*.pem
+*.p12
+*.pfx
+*_secret.json
+*_credentials.json
+config.local.json
+orchestrator/state/config.json
 
 # Spyder project settings
 .spyderproject

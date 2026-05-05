@@ -16,8 +16,8 @@ ORCHESTRATOR_DIR = Path("/workspace/orchestrator")
 LOGS_DIR = ORCHESTRATOR_DIR / "logs"
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
-# MiniMax API Configuration
-MINIMAX_API_KEY = "REDACTED"
+# MiniMax API Configuration — read from environment, never hardcode
+MINIMAX_API_KEY = os.environ.get("MINIMAX_API_KEY", "")
 
 # Try different MiniMax endpoints
 ENDPOINTS = [

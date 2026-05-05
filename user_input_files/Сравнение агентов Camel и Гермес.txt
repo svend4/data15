@@ -1,0 +1,570 @@
+From: https://chatgpt.com/c/69edcd84-3d14-8325-8302-eb32aa8e4863
+
+
+
+you asked
+
+https://github.com/camel-ai/camel  сравнить этого Агента нужно с Агентом Гермес надо сравнить
+
+
+chatgpt response
+
+Ниже сравнение CAMEL-AI / camel с Hermes Agent от Nous Research. Я исхожу из того, что под «Агентом Гермес» имеется в виду репозиторий NousResearch/hermes-agent; если нужен другой Hermes, пришлите ссылку.
+
+Главный вывод
+
+CAMEL — это прежде всего фреймворк/SDK для построения multi-agent систем: исследование, симуляции, генерация данных, кастомные агенты, orchestration.
+Hermes Agent — это скорее готовый автономный персональный/девелоперский агент, который можно запустить в терминале, Telegram/Discord/Slack/WhatsApp/Signal, дать ему инструменты, память, skills и расписания.
+
+То есть сравнивать их нужно не как «один агент против другого», а как:
+
+CAMEL = конструктор агентных систем
+Hermes = готовый агент-ассистент с памятью и инструментами
+
+
+
+CAMEL позиционируется как open-source multi-agent framework для исследования scaling laws of agents, с поддержкой разных агентов, задач, промптов, моделей и сред. Hermes описан как self-improving AI agent с built-in learning loop, persistent memory, skills, terminal/tool execution и запуском через CLI/messaging gateway. (GitHub)
+
+Сравнительная таблица
+
+Критерий CAMEL-AI / camel Hermes Agent
+Тип продукта Фреймворк для разработки LLM/multi-agent систем Готовый автономный агент/ассистент
+Основная задача Создавать, тестировать и масштабировать агентные системы Работать как персональный агент: помнить, выполнять задачи, пользоваться инструментами
+Лучший сценарий Исследования, multi-agent workflows, симуляции, генерация данных, кастомные агенты Личный/командный dev-agent, terminal automation, чат через мессенджеры, долгосрочная память
+Multi-agent Сильная сторона: CAMEL проектировался вокруг multi-agent систем и масштабирования до больших агентных сред Есть subagents/делегирование, но это не основной «исследовательский multi-agent framework»
+Память Есть stateful memory как часть агентной архитектуры Сильный акцент на persistent memory: MEMORY.md, USER.md, session search, внешние memory providers
+Инструменты Toolkits, custom tools, MCP client/server, интеграции через код 55 built-in tools, terminal, files, browser, web, memory, delegation, cron, MCP
+MCP CAMEL может использовать MCP tools и даже expose CAMEL agents/toolkits как MCP servers Hermes подключает внешние MCP servers через stdio/HTTP и регистрирует их как инструменты
+Интерфейс В основном Python SDK / framework CLI/TUI, messaging gateway, OpenAI-compatible API, мессенджеры
+Запуск pip install camel-ai, затем пишется код агента one-line installer, затем hermes; Linux/macOS/WSL2/Termux, Windows через WSL2
+Модели Гибкая фабрика моделей и провайдеров, удобно для экспериментов Много провайдеров, переключение через hermes model, фокус на no-code/low-code использовании
+Автоматизация по расписанию Можно строить самостоятельно Встроенный cron/scheduled tasks
+Лицензия Apache-2.0 MIT
+Зрелость / фокус Более «framework/research»-ориентированный проект, NeurIPS 2023 citation в README Более «agent product»-ориентированный проект, быстро развивающийся интерфейс и tool ecosystem
+
+CAMEL README указывает на design principles: evolvability, scalability, statefulness и code-as-prompt; также заявляет поддержку large-scale agent systems, dynamic communication, stateful memory, benchmarks, разных типов агентов и tool integration. (GitHub)Hermes, в свою очередь, делает упор на closed learning loop, skills, long-term memory, messaging gateway, terminal backends, cron и subagents. (GitHub)
+
+По архитектуре
+
+CAMEL лучше рассматривать как библиотеку, на которой вы строите свою систему. Типичный путь: выбрать модель, создать ChatAgent, подключить tools/toolkits, затем собрать multi-agent workflow. В README есть quick start через pip install camel-ai, ChatAgent, ModelFactory и SearchToolkit. (GitHub)
+Hermes уже поставляется как агентное приложение. У него есть CLI/TUI, gateway для мессенджеров, slash-команды, tools, skills, persistent memory, cron, terminal backends и MCP. Это ближе к «установил и пользуешься агентом», а не к «пишу свой framework-level агент». (Hermes Agent)
+
+Память и самообучение
+
+Здесь Hermes сильнее как готовый пользовательский агент. У него явно описана persistent memory: MEMORY.md для заметок агента и USER.md для профиля пользователя, оба хранятся в ~/.hermes/memories/; есть session search через SQLite/FTS5 и внешние memory providers вроде Honcho, Mem0, Supermemory и других. (Hermes Agent)
+У CAMEL память тоже есть, но она больше часть архитектуры multi-agent framework. CAMEL заявляет stateful memory для multi-step interactions и sophisticated tasks, но его основная сила не в «персональном агенте, который растёт вместе с пользователем», а в конструировании агентных систем. (GitHub)
+Итог по памяти:
+для персонального AI-ассистента с долгой историей — Hermes;
+для memory-aware multi-agent research/workflows — CAMEL.
+
+Инструменты и MCP
+
+Оба поддерживают MCP, но используют его по-разному.
+
+CAMEL показывает MCP как способ подключать внешние tools к CAMEL agents, а также expose CAMEL agents/toolkits как MCP servers. Это полезно, когда вы строите свою систему и хотите, чтобы агенты были переиспользуемыми компонентами. (CAMEL-AI)
+Hermes использует MCP как расширение готового агента: он может подключаться к GitHub, databases, file systems, browser stacks, internal APIs и другим external tool servers через stdio/HTTP; tools автоматически обнаруживаются и регистрируются при старте. (Hermes Agent)
+Итог по MCP:
+CAMEL удобнее, если вы проектируете агентную архитектуру; Hermes удобнее, если хотите быстро дать уже работающему агенту доступ к внешним tool-серверам.
+
+Интерфейс и удобство для пользователя
+
+Hermes выигрывает по готовому UX. Он имеет terminal interface, TUI, slash commands, messaging gateway, работу через Telegram/Discord/Slack/WhatsApp/Signal/Email/Home Assistant, а также OpenAI-compatible API server для подключения к Open WebUI. (GitHub)
+CAMEL выигрывает по developer control. Это Python-фреймворк: вы контролируете классы агентов, модели, toolkits, prompts, workflows, среды, benchmark-логику и интеграции.
+
+Масштабирование и multi-agent research
+
+CAMEL сильнее для multi-agent research. В README заявлены масштабируемость до систем с миллионами агентов, dynamic communication, benchmarks, разные agent types и world simulation/data generation/task automation как основные направления. (GitHub)
+Hermes тоже умеет делегировать задачи subagents и запускать параллельные workstreams, но его фокус — practical autonomous assistant. Документация описывает subagent delegation, code execution, batch processing и scheduled tasks, но это часть продукта-агента, а не полноценная исследовательская multi-agent платформа уровня CAMEL. (Hermes Agent)
+
+Репозитории и активность
+
+На момент проверки GitHub показывает у CAMEL около 16.8k stars, 1.9k forks, 2,182 commits, последнюю release v0.2.90 от 22 марта 2026, лицензию Apache-2.0. (GitHub)
+У Hermes Agent GitHub показывает около 117k stars, 17.3k forks, 5,957 commits, последнюю release v0.11.0 от 23 апреля 2026, лицензию MIT. (GitHub)
+Stars — это сигнал интереса сообщества, но не прямая метрика качества. Для выбора важнее класс задачи: framework vs готовый агент.
+
+Когда выбрать CAMEL
+
+Выбирайте CAMEL, если вам нужно:
+
+создать свою multi-agent систему; проводить исследования; моделировать взаимодействие множества агентов; генерировать synthetic data; строить кастомные workflows; контролировать архитектуру на уровне Python SDK; подключать свои модели, tools, environments и evaluation pipelines.
+
+Практический пример: «Нужно сделать систему из researcher-agent, planner-agent, coder-agent, reviewer-agent, benchmark-agent и собрать воспроизводимый pipeline». Здесь CAMEL логичнее.
+
+Когда выбрать Hermes Agent
+
+Выбирайте Hermes, если вам нужно:
+
+готовый агент, который работает в терминале или мессенджерах; persistent memory; skills; terminal/file/browser/web tools; автоматизации по расписанию; подключение MCP-серверов без написания собственного агентного фреймворка; личный dev-assistant, который со временем накапливает контекст.
+
+Практический пример: «Нужен агент на VPS, которому можно писать в Telegram, чтобы он проверял репозиторий, запускал команды, помнил предпочтения и делал регулярные отчёты». Здесь Hermes логичнее.
+
+Риски и ограничения
+
+CAMEL: выше порог входа, потому что это framework; нужно писать код, проектировать архитектуру, настраивать tools, memory, evaluation и безопасность самостоятельно. Он мощнее как основа для разработки, но не является «готовым персональным агентом из коробки».
+
+Hermes: удобнее как готовый агент, но из-за терминала, файлов, browser automation, MCP и cron он потенциально получает широкий доступ к среде. Его стоит запускать в Docker/SSH/Modal/Daytona/sandboxed backend и внимательно настраивать инструменты, особенно если агент работает на сервере или с чувствительными файлами. Документация Hermes прямо описывает разные terminal backends, включая local, Docker, SSH, Singularity, Modal и Daytona. (Hermes Agent)
+
+Итоговая рекомендация
+
+Для продукта/исследования на базе multi-agent architecture — CAMEL.
+Он лучше как фундамент: гибкость, масштабирование, роли, симуляции, data generation, MCP-as-client/server.
+
+Для личного или командного AI-агента, который уже должен работать — Hermes.
+Он лучше как готовый исполнитель: память, terminal, мессенджеры, skills, cron, MCP tools, TUI.
+
+Самая точная формула:
+
+CAMEL — чтобы строить агентов. Hermes — чтобы пользоваться агентом.
+
+
+
+
+you asked
+
+Ещё есть такая программа как мультика она похожа на camel подробнее про неё такая программа мультика
+
+
+chatgpt response
+
+Похоже, вы имеете в виду Multica — репозиторий multica-ai/multica. Это действительно «из мира агентов», но она не совсем аналог CAMEL.
+
+Главная формула:
+
+CAMEL — фреймворк для создания multi-agent систем.
+Hermes — самостоятельный AI-агент.
+Multica — платформа управления агентами, как Linear/Jira/board для людей + AI-агентов.
+
+
+
+То есть Multica не заменяет Hermes — она может управлять Hermes как одним из агентных backend’ов. И Multica не заменяет CAMEL — потому что CAMEL даёт SDK/архитектуру для разработки агентов, а Multica даёт рабочее пространство, задачи, доску, статусы, runtime’ы и командную координацию.
+
+Что такое Multica
+
+Multica — open-source платформа для управления coding agents: вы создаёте задачи, назначаете их агентам, следите за прогрессом, получаете комментарии, статусы, блокеры и историю выполнения. В описании проекта она позиционируется как managed agents platform: агенты становятся «участниками команды», которым можно назначать issues почти как человеку. (GitHub)
+На сайте Multica прямо объясняется её отличие от простого запуска coding agent: обычный агент умеет выполнять работу, а Multica добавляет management layer — очереди задач, координацию команды, skill reuse, monitoring runtime’ов и единое представление того, что делает каждый агент. (Multica)
+
+Как она работает технически
+
+Архитектура Multica состоит из трёх частей:
+
+Multica server — хранит workspaces, issues, members, task queue и agent definitions.
+Daemon — маленькая программа на вашей машине, которая забирает задачи и запускает локальные AI coding tools.
+AI coding tool — реальный исполнитель: Claude Code, Codex, Hermes, Gemini, OpenCode и другие. (Multica)
+Очень важный момент: агенты не выполняются на серверах Multica. По текущей документации задачи исполняются через локальный daemon на вашей машине; ваши API-ключи, кодовые директории и toolchain остаются локально. Сервер Multica только координирует задачи и события. (Multica)
+Типичный цикл такой: вы назначаете issue агенту, сервер ставит task в очередь, daemon забирает её, создаёт изолированную рабочую директорию, запускает выбранный AI coding tool, агент пишет код/запускает тесты/комментирует, а результат возвращается в Multica UI. (Multica)
+
+Чем Multica похожа на CAMEL
+
+Похожа только поверхностно: обе связаны с агентами и multi-agent workflow.
+
+Но уровень разный:
+
+Критерий CAMEL Multica
+Что это Python framework / SDK Платформа управления агентами
+Главная задача Строить агентные системы Управлять работой coding agents
+Пользователь Разработчик/исследователь multi-agent систем Команда разработки, которая хочет назначать задачи AI-агентам
+Агентная логика Вы пишете её сами через CAMEL Логика приходит от внешнего coding agent: Hermes, Claude Code, Codex и т.д.
+Интерфейс Код, SDK, Python Web UI, board, issues, comments, CLI, daemon
+Multi-agent Фундаментальная часть framework’а Несколько агентов как участники workspace
+Исследования / simulation Да, сильная сторона CAMEL Нет, Multica больше про production workflow
+Управление задачами Нужно строить самому Встроено: issues, queue, statuses, comments, runtime monitoring
+
+CAMEL описывает себя как open-source сообщество и фреймворк для исследования scaling laws of agents, с поддержкой разных агентов, задач, моделей, environments, memory, tools и large-scale multi-agent systems. (GitHub)
+Multica же описывает агента как участника workspace: он может получать issues, писать comments, быть @-mentioned, вести проект и создавать новые issues во время выполнения задачи. (Multica)
+
+Чем Multica похожа на Hermes
+
+Здесь связь ближе: Hermes может быть одним из исполнителей внутри Multica.
+
+Multica daemon умеет auto-detect разные AI coding CLIs, включая Hermes. В списке поддерживаемых tools есть Claude Code, Codex, Cursor, Copilot, Gemini, Hermes, Kimi, OpenCode, OpenClaw и Pi. (Multica)
+Но роли разные:
+
+Критерий Hermes Multica
+Что это Самостоятельный AI-агент Менеджер/оркестратор агентов
+Где работает CLI, TUI, gateway, messaging platforms Web workspace + daemon + agent runtimes
+Главная задача Сам выполнять задачи, помнить, пользоваться tools Назначать задачи разным агентам и отслеживать выполнение
+Память Сильная persistent memory, skills, sessions Больше task/project memory: issues, comments, runs, skills
+Расписание Есть cron в Hermes Есть Autopilots в Multica
+Связь между ними Hermes можно запускать отдельно Multica может запускать Hermes как backend
+
+Hermes в своём README описан как self-improving AI agent с built-in learning loop, skills, persistent memory, terminal interface, messaging gateway, cron scheduler и subagents. (GitHub)
+Multica не пытается быть «мозгом» вместо Hermes. Она скорее говорит: «У вас есть Hermes, Claude Code, Codex и другие агенты — давайте управлять ими как сотрудниками на доске задач».
+
+Основные функции Multica
+
+1. Агенты как участники команды
+
+Агент в Multica — это почти полноценный member workspace: его можно назначить на issue, упомянуть в комментарии, он может отвечать, менять статус, создавать issues и быть project lead. Отличие от человека в том, что после assignment или @mention он стартует автоматически. (Multica)
+
+2. Issues и board
+
+Multica похожа на Linear/Jira/Trello, но с AI-агентами в роли исполнителей. Вы создаёте issue, назначаете его агенту, и агент сам начинает работу. События идут в timeline: кто назначил, что агент сделал, какие файлы читал, какие команды запускал, где застрял. (Multica)
+
+3. Task lifecycle
+
+Каждый запуск агента — это task. Он проходит состояния: queued, dispatched, running, completed, failed, cancelled. Есть timeout’ы, retry rules и manual rerun. Например, если task был dispatched, но не стартовал, timeout — 5 минут; если running слишком долго, timeout — 2.5 часа. (Multica)
+
+4. Local daemon и runtimes
+
+Daemon запускается на вашей машине и регистрирует runtime’ы. Runtime — это связка daemon × AI coding tool. Например, если на одной машине установлены Claude Code и Hermes, Multica может видеть разные runtime’ы и направлять задачи конкретному агенту. (Multica)
+
+5. Поддержка многих coding agents
+
+Multica поддерживает 10 AI coding tools. Но возможности у них разные: у одних есть session resumption, у других нет; MCP реально используется только Claude Code; skill injection paths тоже разные. Hermes в Multica поддерживает session resumption, но для skills используется fallback path .agent_context/skills/, поэтому документация советует проверять, действительно ли Hermes CLI читает этот путь. (Multica)
+
+6. Skills
+
+Skills в Multica — это knowledge packs на базе SKILL.md и дополнительных файлов. Их можно импортировать из GitHub, ClawHub, local directories или создать прямо в UI. Один skill можно прикрепить к нескольким агентам, и агент получает его при запуске задачи. (Multica)
+
+7. Autopilots
+
+Autopilots — это scheduled задачи для агентов. Можно задать cron expression и timezone, чтобы агент регулярно выполнял работу: отчёты, проверки, cleanup, standup summaries. Сейчас end-to-end usable triggers — schedule и manual; webhook/API triggers зарезервированы, но ещё не работают полноценно. (Multica)
+
+Установка
+
+Для macOS/Linux рекомендуемый вариант:
+
+brew install multica-ai/tap/multica
+multica setup
+
+Для self-hosted варианта:
+
+multica setup self-host
+
+В документации также есть установочный скрипт и Windows PowerShell-команда; CLI умеет запускать daemon, логиниться, создавать issues и управлять workspace. (GitHub)
+
+Архитектура проекта
+
+По GitHub README, стек примерно такой:
+
+Слой Технология
+Frontend Next.js
+Backend Go
+Realtime WebSocket
+Database PostgreSQL + pgvector
+Runtime Local agent daemon
+Agent backends Claude Code, Codex, Hermes, Gemini, OpenCode и другие
+
+Это не Python SDK как CAMEL. Это полноценное web/backend/daemon-приложение для управления агентными исполнителями. (GitHub)
+
+Важные ограничения
+
+Первое: Multica не является LLM-agent framework уровня CAMEL. Она не даёт вам такую же низкоуровневую архитектуру агентов, как CAMEL: роли, agent societies, simulation environments, synthetic data generation, research workflows. CAMEL для этого подходит лучше. (GitHub)
+Второе: MCP в Multica сейчас фактически полезен только с Claude Code. Документация matrix прямо говорит, что из 10 tools только Claude Code реально читает mcp_config; остальные принимают поле, но игнорируют его. (Multica)
+Третье: секреты надо хранить осторожно. В настройках агента можно задавать custom environment variables, но документация предупреждает, что значения custom_env хранятся в plaintext в server database; их не стоит использовать для production database passwords, root tokens и других high-value secrets. (Multica)
+Четвёртое: third-party skills могут быть опасны. Multica не подписывает, не аудитит и не sandbox’ит imported skills; содержимое передаётся AI coding tool как есть, поэтому перед импортом из GitHub/marketplace нужно проверять SKILL.md и все файлы. (Multica)
+
+Когда выбирать Multica
+
+Выбирайте Multica, если вам нужно:
+
+назначать задачи AI-агентам как сотрудникам;
+видеть board, статусы, comments и прогресс;
+запускать Hermes/Claude Code/Codex/Gemini как исполнителей;
+управлять несколькими агентами и несколькими workspace;
+давать агентам recurring tasks через cron/autopilots;
+self-host или использовать cloud/backend, но чтобы код и ключи оставались на вашей машине.
+
+Практический пример: у вас есть проект на GitHub, вы хотите создать issue «починить auth middleware», назначить его агенту Hermes или Claude Code, наблюдать прогресс, получить комментарий, PR/patch и статус выполнения. Здесь Multica очень уместна.
+
+Когда выбирать CAMEL вместо Multica
+
+Выбирайте CAMEL, если вам нужно не управлять готовыми coding agents, а создать собственную multi-agent систему: researcher, planner, coder, reviewer, critic, memory module, retrieval module, benchmark pipeline, simulated environment, synthetic data generation. CAMEL лучше как фундамент для разработки и исследований. (GitHub)
+
+Когда выбирать Hermes вместо Multica
+
+Выбирайте Hermes отдельно, если вам нужен один сильный автономный агент с памятью, terminal tools, skills, cron, messaging gateway и возможностью работать через CLI/Telegram/Discord/Slack/WhatsApp/Signal. Hermes лучше как персональный агент-исполнитель. (GitHub)
+
+Итог
+
+Multica — это не “ещё один CAMEL”.
+Правильнее так:
+
+CAMEL строит агентов.
+Hermes является агентом.
+Multica управляет агентами как командой.
+
+
+
+Если вы хотите разработать свою агентную архитектуру — CAMEL.
+Если хотите запустить личного агента — Hermes.
+Если хотите назначать задачи нескольким агентам и управлять ими через доску — Multica.
+
+
+you asked
+
+Можно ли Camel чтобы управлял мультикой а мультика управляла гермесом то есть мультика является как бы средним уровнем между кэмелом и гермесом
+
+
+chatgpt response
+
+Да — именно так можно построить архитектуру:
+
+CAMEL сверху как “главный мозг / стратег / диспетчер”
+Multica посередине как “операционный слой / task manager / board / runtime router”
+Hermes снизу как “исполнитель задач / coding agent / terminal agent”
+
+
+
+То есть ваша идея правильная: Multica может быть средним уровнем между CAMEL и Hermes.
+
+Правильная схема
+
+Пользователь / бизнес-цель
+        ↓
+CAMEL
+главный multi-agent orchestrator:
+планирует, разбивает задачу, выбирает исполнителя, проверяет результат
+        ↓
+Multica
+средний слой:
+issues, проекты, assignees, статусы, task queue, run history, runtime routing
+        ↓
+Multica daemon
+локальный исполнительный слой:
+видит доступные CLI-агенты и запускает нужного
+        ↓
+Hermes
+конкретный агент-исполнитель:
+пишет код, запускает команды, работает с файлами, памятью, tools/MCP
+
+Это архитектурно даже очень естественно: CAMEL не должен сам запускать Hermes напрямую для каждой мелкой задачи, а может создавать задачи в Multica, назначать их Hermes-агенту, читать прогресс, добавлять комментарии и принимать решение, что делать дальше.
+
+Почему это возможно
+
+У CAMEL есть механизм tools: tool в CAMEL — это вызываемая функция, через которую агент получает доступ к внешним API, CLI или другой логике. То есть можно сделать CAMEL-tool, который вызывает Multica: создать issue, назначить его агенту, проверить runs, прочитать сообщения выполнения, добавить комментарий. В документации CAMEL tool описан как callable interface между агентом и внешним миром. (Camel AI)
+У CAMEL также есть MCP-клиентский режим: CAMEL agent может подключаться к MCP servers через MCPToolkit, получать от них tools и использовать их как внешние возможности. Это значит, что самый чистый вариант — сделать или использовать Multica MCP server, а CAMEL будет управлять Multica через MCP. (Camel AI)
+Со стороны Multica связка с Hermes уже предусмотрена: Multica daemon auto-detects agent CLIs, включая hermes, а при появлении задачи создаёт isolated workspace, запускает нужный agent CLI и стримит результаты обратно. (GitHub)В README Multica прямо указано, что она работает с Claude Code, Codex, OpenClaw, OpenCode, Hermes, Gemini, Pi и Cursor Agent. (GitHub)
+
+Как это должно работать на практике
+
+Например, пользователь даёт CAMEL большую задачу:
+
+“Сделай аудит backend-проекта, найди проблемы авторизации, исправь их, добавь тесты и подготовь отчёт.”
+
+
+
+CAMEL не обязательно сам лезет в репозиторий. Он делает план:
+
+1. Проверить auth middleware
+2. Найти слабые места в JWT/session logic
+3. Добавить тесты
+4. Исправить найденные баги
+5. Проверить regression
+6. Подготовить summary
+
+Потом CAMEL через Multica создаёт несколько issues:
+
+multica issue create \
+  --title "Audit auth middleware" \
+  --description "Check JWT/session/auth middleware for vulnerabilities..." \
+  --priority high \
+  --assignee "Hermes"
+
+Multica ставит задачу в очередь. Daemon видит задачу, выбирает runtime с Hermes, запускает Hermes. Hermes выполняет задачу: читает код, правит файлы, запускает тесты, оставляет комментарии и статус.
+
+Потом CAMEL читает результат:
+
+multica issue runs <issue-id> --output json
+multica issue run-messages <task-id> --output json
+
+И решает:
+
+— задача завершена хорошо → создать следующую
+— тесты упали → вернуть Hermes уточняющую задачу
+— найден риск → создать отдельный issue
+— результат спорный → назначить reviewer agent / человека
+
+Multica CLI уже поддерживает создание, назначение, обновление, комментарии, историю запусков и просмотр сообщений runs. В документации CLI есть команды multica issue create, multica issue assign, multica issue runs, multica issue run-messages и multica issue comment add. (GitHub)
+
+Лучший вариант интеграции
+
+Я бы выбрал такую схему:
+
+CAMEL
+  ↓ через MCP
+Multica MCP bridge
+  ↓ через Multica CLI/API
+Multica server
+  ↓ через daemon
+Hermes runtime
+
+Почему именно так:
+
+CAMEL → Multica через MCP чище, чем просто shell-команды, потому что CAMEL уже умеет использовать MCP tools. MCP-слой можно сделать с инструментами вроде:
+
+create_issue
+assign_issue
+list_agents
+get_issue
+get_runs
+get_run_messages
+add_comment
+change_status
+create_project
+trigger_autopilot
+
+На GitHub у Multica уже есть открытое feature-issue про MCP server, который wraps Multica CLI и позволяет AI assistants создавать issues, назначать agents, строить sequential workflows и мониторить прогресс; это не обязательно официальный встроенный компонент, но направление полностью совпадает с вашей архитектурой. (GitHub)
+
+Минимальный рабочий вариант без MCP
+
+Можно проще: в CAMEL создать custom tool, который вызывает multica CLI.
+
+Примерно так:
+
+import subprocess
+import json
+from camel.toolkits import FunctionTool
+
+def create_multica_issue(title: str, description: str, assignee: str, priority: str = "medium") -> str:
+    """Create a Multica issue and assign it to an agent."""
+    cmd = [
+        "multica", "issue", "create",
+        "--title", title,
+        "--description", description,
+        "--priority", priority,
+        "--assignee", assignee,
+    ]
+
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    if result.returncode != 0:
+        return f"ERROR: {result.stderr}"
+
+    return result.stdout
+
+def get_multica_issue_runs(issue_id: str) -> str:
+    """Get execution runs for a Multica issue."""
+    cmd = ["multica", "issue", "runs", issue_id, "--output", "json"]
+
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    if result.returncode != 0:
+        return f"ERROR: {result.stderr}"
+
+    return result.stdout
+
+create_issue_tool = FunctionTool(create_multica_issue)
+get_runs_tool = FunctionTool(get_multica_issue_runs)
+
+Потом CAMEL-agent получает эти tools и может сам создавать задачи в Multica. CAMEL docs прямо показывают, что custom Python function можно wrapped as FunctionTool и передать в ChatAgent. (Camel AI)
+
+Роли в такой системе
+
+Самая важная часть — не смешивать роли.
+
+Слой Роль Что должен делать
+CAMEL Главный orchestrator Декомпозиция задач, выбор стратегии, контроль качества, re-planning
+Multica Операционный middle layer Issues, board, статусы, очереди, runtime routing, история выполнения
+Hermes Исполнитель Кодинг, терминал, файлы, тесты, локальные tools, skills, память
+Человек Владелец/ревьюер Утверждение рискованных действий, merge, production-доступ
+
+В такой модели CAMEL управляет не Hermes напрямую, а работой через Multica. Это лучше, потому что Multica сохраняет историю, статусы, контекст задачи, комментарии и execution logs.
+
+Где Multica действительно “средний уровень”
+
+Multica здесь выполняет роль, похожую на:
+
+Jira / Linear / Trello + agent runtime router + execution monitor
+
+Она не столько “думает”, сколько организует работу:
+
+кто делает → что делает → где выполняется → какой статус → что сказал агент → какой результат
+
+CAMEL может быть “главным менеджером”, но Multica — это “операционная система команды агентов”.
+
+Важное ограничение
+
+Связка Multica → Hermes есть, но Hermes-интеграция в Multica ещё может быть менее зрелой, чем, например, Claude Code. В changelog Multica указано появление Hermes Agent Provider via ACP protocol 10 апреля 2026. (Multica)При этом на GitHub были недавние закрытые issues, где пользователи сообщали о проблемах Hermes-интеграции: например, один issue от 23 апреля 2026 описывал, что Hermes поддерживается, но не полностью интегрирован с meta skills/skill resolution; другой issue от 16 апреля 2026 описывал сбой Hermes с local LLM provider. Поскольку оба issue отображаются закрытыми, это не доказательство текущей поломки, но это сигнал: перед production-схемой нужно протестировать конкретные версии Multica и Hermes. (GitHub)
+
+Какой уровень управления дать CAMEL
+
+Я бы не давал CAMEL полный shell-доступ сразу. Лучше дать ему строго ограниченные инструменты:
+
+create_issue
+assign_issue
+comment_issue
+get_issue_status
+get_run_messages
+mark_blocked
+request_human_review
+
+Не давать на первом этапе:
+
+delete_project
+delete_workspace
+change_secrets
+run_arbitrary_shell
+merge_to_main
+deploy_to_prod
+
+Иначе CAMEL + Multica + Hermes превращаются в цепочку, где верхний агент может косвенно заставить нижний агент делать слишком много.
+
+Хорошая рабочая конфигурация
+
+CAMEL Supervisor Agent
+  ├─ Planner Agent
+  ├─ Critic/Reviewer Agent
+  ├─ Risk/Security Agent
+  └─ Multica Control Tool
+
+Multica
+  ├─ Project: Backend Refactor
+  ├─ Agent: Hermes-Coder
+  ├─ Agent: Claude-Reviewer, опционально
+  ├─ Agent: Codex-Test, опционально
+  └─ Issues / Runs / Comments / Statuses
+
+Hermes
+  ├─ Работает через Multica daemon
+  ├─ Имеет доступ к repo
+  ├─ Имеет terminal tools
+  ├─ Имеет skills/memory
+  └─ Возвращает результат в Multica
+
+Идеальная логика цикла
+
+1. CAMEL получает цель.
+2. CAMEL разбивает цель на задачи.
+3. CAMEL создаёт issues в Multica.
+4. CAMEL назначает issue на Hermes.
+5. Multica daemon запускает Hermes.
+6. Hermes выполняет задачу.
+7. Multica собирает output, status, comments, logs.
+8. CAMEL читает результат.
+9. CAMEL принимает решение:
+   - принять;
+   - отправить на доработку;
+   - создать новую подзадачу;
+   - назначить reviewer agent;
+   - попросить человека вмешаться.
+
+Это уже похоже на агентную организацию, где CAMEL — “руководитель”, Multica — “операционный офис”, Hermes — “сотрудник-исполнитель”.
+
+Короткий ответ
+
+Да, можно:
+
+CAMEL управляет Multica. Multica управляет Hermes. Multica является средним уровнем между CAMEL и Hermes.
+
+
+
+Но точнее сказать так:
+
+CAMEL — стратегический orchestration layer.
+Multica — task-management / runtime-routing layer.
+Hermes — execution layer.
+
+
+
+Самый правильный технический путь: CAMEL → Multica MCP/CLI bridge → Multica daemon → Hermes.

@@ -1,55 +1,67 @@
 #!/bin/bash
-# OpenClaw Runner Script v3
-# Wrapper for calling OpenClaw from orchestrator.py with proper environment
-# Uses: openclaw agent --local --message "..."
+# OpenClaw Runner Script v4
+# Wrapper for calling OpenClaw agent from orchestrator with correct environment.
+# Usage: ./openclaw_runner.sh --prompt "text" [--output file] [--timeout 120]
 
-# Disable telemetry
+set -euo pipefail
+
+# ── Environment ─────────────────────────────────────────────────────────────
 export OPENCLAW_NO_TELEMETRY=1
-
-# Use Node.js 22 from manual installation
-export PATH="/tmp/node-v22.12.0-linux-x64/bin:$PATH"
-
-# Remove conflicting npm_config_prefix if set
 unset npm_config_prefix
 
-# Default settings
+# Try to locate Node.js / OpenClaw via NVM
+NVM_NODE_PATHS=(
+    "$HOME/.nvm/versions/node/v22.22.2/bin"
+    "$HOME/.nvm/versions/node/v22.12.0/bin"
+    "/tmp/node-v22.12.0-linux-x64/bin"
+    "/home/minimax/.nvm/versions/node/v22.22.2/bin"
+)
+for p in "${NVM_NODE_PATHS[@]}"; do
+    [ -d "$p" ] && export PATH="$p:$PATH" && break
+done
+
+# ── Argument parsing ─────────────────────────────────────────────────────────
 TIMEOUT=120
 PROMPT=""
 OUTPUT_FILE=""
 
-# Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --prompt)
-            PROMPT="$2"
-            shift 2
-            ;;
-        --output)
-            OUTPUT_FILE="$2"
-            shift 2
-            ;;
-        --timeout)
-            TIMEOUT="$2"
-            shift 2
-            ;;
-        *)
-            break
-            ;;
+        --prompt)   PROMPT="$2";      shift 2 ;;
+        --output)   OUTPUT_FILE="$2"; shift 2 ;;
+        --timeout)  TIMEOUT="$2";     shift 2 ;;
+        *)          break ;;
     esac
 done
 
-# Prepare command
-CMD="openclaw"
+# ── Locate openclaw binary ───────────────────────────────────────────────────
+OPENCLAW_BIN=$(command -v openclaw 2>/dev/null || true)
+if [ -z "$OPENCLAW_BIN" ]; then
+    echo "[openclaw_runner] ERROR: openclaw binary not found in PATH" >&2
+    echo "PATH=$PATH" >&2
+    exit 1
+fi
 
-if [ -n "$PROMPT" ]; then
-    # Run agent with local mode and message, using session-id
-    SESSION_ID="orchestrator-$(date +%s)"
-    if [ -n "$OUTPUT_FILE" ]; then
-        timeout "$TIMEOUT" $CMD agent --local --message "$PROMPT" --session-id "$SESSION_ID" --timeout "$TIMEOUT" 2>&1 | tee "$OUTPUT_FILE"
-    else
-        timeout "$TIMEOUT" $CMD agent --local --message "$PROMPT" --session-id "$SESSION_ID" --timeout "$TIMEOUT" 2>&1
-    fi
+# ── Execute ──────────────────────────────────────────────────────────────────
+if [ -z "$PROMPT" ]; then
+    # No prompt — just print version
+    "$OPENCLAW_BIN" --version 2>&1
+    exit 0
+fi
+
+SESSION_ID="orch-$(date +%s)"
+
+run_openclaw() {
+    # OpenClaw agent mode: pass prompt as --message argument
+    timeout "$TIMEOUT" "$OPENCLAW_BIN" agent \
+        --local \
+        --message "$PROMPT" \
+        --session-id "$SESSION_ID" \
+        2>&1
+}
+
+if [ -n "$OUTPUT_FILE" ]; then
+    run_openclaw | tee "$OUTPUT_FILE"
 else
-    # Just check version
-    $CMD --version
+    run_openclaw
 fi

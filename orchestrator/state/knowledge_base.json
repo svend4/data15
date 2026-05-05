@@ -2,88 +2,77 @@
   "articles": [
     {
       "id": 1,
-      "title": "Getting Started",
-      "content": "Welcome to the orchestrator...",
-      "category": "tutorials",
-      "tags": [
-        "guide",
-        "basics"
-      ],
-      "author": "system",
-      "created": "2026-05-05T07:44:54.849764Z",
-      "updated": "2026-05-05T07:44:54.849772Z",
+      "title": "Hermes Agent: запуск и формат команд",
+      "content": "Hermes Agent (Nous Research) — внутренний AI-агент с самообучением.\n\nКоманда запуска:\n  hermes --prompt \"Задача\" --output json\n\nMiniMax fallback:\n  python3 hermes_llm.py \"Задача\"\n\nWorkflowEngine action type: call_hermes\nКонтекст: результат → context[\"hermes_result\"]",
+      "category": "connectors",
+      "tags": ["hermes", "cli", "agent", "internal"],
+      "author": "orchestrator",
+      "created": "2026-05-05T09:00:00Z",
+      "updated": "2026-05-05T09:00:00Z",
       "views": 0,
       "version": 1
     },
     {
       "id": 2,
-      "title": "Getting Started Guide",
-      "content": "This guide covers the basics of using the orchestrator...",
-      "category": "tutorials",
-      "tags": [
-        "guide",
-        "beginner",
-        "setup"
-      ],
-      "author": "system",
-      "created": "2026-05-05T08:43:36.570365Z",
-      "updated": "2026-05-05T08:43:36.570377Z",
+      "title": "OpenClaw Agent: запуск и формат команд",
+      "content": "OpenClaw — внешний execution engine.\n\nПравильный формат:\n  openclaw agent --local --message \"Задача\" --session-id ID\n\nЧерез runner:\n  bash openclaw_runner.sh --prompt \"Задача\" --timeout 120\n\nNVM PATH:\n  export PATH=\"$HOME/.nvm/versions/node/v22.22.2/bin:$PATH\"\n\nWorkflowEngine action type: call_openclaw\nОШИБКА 'Unknown command': промпт передан без --message",
+      "category": "connectors",
+      "tags": ["openclaw", "cli", "agent", "external", "nvm"],
+      "author": "orchestrator",
+      "created": "2026-05-05T09:00:00Z",
+      "updated": "2026-05-05T09:00:00Z",
       "views": 0,
       "version": 1
     },
     {
       "id": 3,
-      "title": "API Reference",
-      "content": "Complete API reference for all endpoints...",
-      "category": "reference",
-      "tags": [
-        "api",
-        "developer",
-        "endpoints"
-      ],
-      "author": "system",
-      "created": "2026-05-05T08:43:36.586122Z",
-      "updated": "2026-05-05T08:43:36.586133Z",
+      "title": "Multica API: создание задач через REST",
+      "content": "POST http://localhost:3000/api/tasks\nBody: {\"title\": \"...\", \"agent\": \"Hermes\", \"priority\": \"high\"}\n\nЗапуск: docker-compose up или multica daemon start\n\nWorkflowEngine action type: call_multica\nFallback: internal board при недоступности\nКонтекст: → context[\"multica_task_id\"]",
+      "category": "connectors",
+      "tags": ["multica", "api", "rest", "tasks"],
+      "author": "orchestrator",
+      "created": "2026-05-05T09:00:00Z",
+      "updated": "2026-05-05T09:00:00Z",
       "views": 0,
       "version": 1
     },
     {
       "id": 4,
-      "title": "Getting Started Guide",
-      "content": "This guide covers the basics of using the orchestrator...",
-      "category": "tutorials",
-      "tags": [
-        "guide",
-        "beginner",
-        "setup"
-      ],
-      "author": "system",
-      "created": "2026-05-05T08:43:59.659777Z",
-      "updated": "2026-05-05T08:43:59.659789Z",
+      "title": "CAMEL-AI: декомпозиция задач",
+      "content": "pip install camel-ai\n\nfrom camel.agents import ChatAgent\nfrom camel.messages import BaseMessage\nagent = ChatAgent(system_message=\"Decompose goals\")\nmsg = BaseMessage.make_user_message(role_name=\"User\", content=\"Goal: ...\")\nresponse = agent.step(msg)\n\nWorkflowEngine action type: call_camel\nФазы fallback: research → analysis → implementation → review\nКонтекст: → context[\"camel_tasks\"]",
+      "category": "connectors",
+      "tags": ["camel", "sdk", "decompose", "planning"],
+      "author": "orchestrator",
+      "created": "2026-05-05T09:00:00Z",
+      "updated": "2026-05-05T09:00:00Z",
       "views": 0,
       "version": 1
     },
     {
       "id": 5,
-      "title": "API Reference",
-      "content": "Complete API reference for all endpoints...",
+      "title": "WorkflowEngine: все доступные action types",
+      "content": "Внутренние (B): create_task, update_status, notify, run_skill, delay\nВнешние (A):   call_hermes, call_openclaw, call_multica, call_camel\n\ncall_hermes:   prompt (str)\ncall_openclaw: prompt (str)\ncall_multica:  title, agent, priority\ncall_camel:    goal, depth\nrun_skill:     skill (имя .md файла без расширения)\n\nВсе результаты → context для следующих шагов.",
       "category": "reference",
-      "tags": [
-        "api",
-        "developer",
-        "endpoints"
-      ],
-      "author": "system",
-      "created": "2026-05-05T08:43:59.673629Z",
-      "updated": "2026-05-05T08:43:59.673641Z",
+      "tags": ["workflow", "actions", "reference"],
+      "author": "orchestrator",
+      "created": "2026-05-05T09:00:00Z",
+      "updated": "2026-05-05T09:00:00Z",
+      "views": 0,
+      "version": 1
+    },
+    {
+      "id": 6,
+      "title": "Гибридная архитектура B+A: пятый элемент",
+      "content": "Подход B (навыки): skills/*.md, knowledge_base, task_templates, WorkflowEngine\nПодход A (коннекторы): hermes CLI, openclaw_runner.sh, Multica API, camel SDK\n\nСвязка: WorkflowEngine._execute_step(action) → коннектор → реальный агент\n\nПаттерны: Orchestrator + Adapter + Facade + Mediator\nНазвание: Skill-Driven Connector Architecture",
+      "category": "architecture",
+      "tags": ["architecture", "hybrid", "b+a", "fifth-element"],
+      "author": "orchestrator",
+      "created": "2026-05-05T09:00:00Z",
+      "updated": "2026-05-05T09:00:00Z",
       "views": 0,
       "version": 1
     }
   ],
-  "categories": [
-    "general",
-    "tutorials",
-    "reference"
-  ],
-  "next_id": 6
+  "categories": ["general", "tutorials", "reference", "connectors", "architecture"],
+  "next_id": 7
 }

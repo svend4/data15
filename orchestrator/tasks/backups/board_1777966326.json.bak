@@ -1,0 +1,35 @@
+{
+  "version": "5.0",
+  "created": "2026-05-05T00:00:00Z",
+  "updated": "2026-05-05T07:31:02.770897Z",
+  "stats": {
+    "total": 220,
+    "queued": 216,
+    "running": 0,
+    "completed": 0,
+    "failed": 0,
+    "blocked": 0,
+    "in_progress": 4
+  },
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "Concurrent Task 0",
+      "description": "",
+      "agent": "Test",
+      "status": "queued",
+      "priority": "medium",
+      "created": "2026-05-05T06:39:18.889955Z",
+      "updated": "2026-05-05T06:39:18.889969Z",
+      "progress": 0,
+      "dependencies": [],
+      "layer": "execution",
+      "complexity": 5,
+      "tags": [],
+      "retry_count": 0,
+      "max_retries": 3,
+      "created_by": "system",
+      "cached_result": null
+    }
+  ]
+}

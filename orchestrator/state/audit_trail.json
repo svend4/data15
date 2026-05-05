@@ -1,0 +1,105 @@
+{
+  "entries": [
+    {
+      "id": 1,
+      "timestamp": "2026-05-05T07:37:52.026939Z",
+      "action": "task_created",
+      "entity_type": "task",
+      "entity_id": "T-001",
+      "user": "test",
+      "details": {},
+      "severity": "info"
+    },
+    {
+      "id": 2,
+      "timestamp": "2026-05-05T07:37:52.048180Z",
+      "action": "task_updated",
+      "entity_type": "task",
+      "entity_id": "T-001",
+      "user": "test",
+      "details": {},
+      "severity": "warning"
+    },
+    {
+      "id": 3,
+      "timestamp": "2026-05-05T08:43:36.622638Z",
+      "action": "task_created",
+      "entity_type": "task",
+      "entity_id": "T-001",
+      "user": "admin",
+      "details": {},
+      "severity": "info"
+    },
+    {
+      "id": 4,
+      "timestamp": "2026-05-05T08:43:36.636423Z",
+      "action": "task_updated",
+      "entity_type": "task",
+      "entity_id": "T-001",
+      "user": "admin",
+      "details": {},
+      "severity": "info"
+    },
+    {
+      "id": 5,
+      "timestamp": "2026-05-05T08:43:36.650022Z",
+      "action": "task_failed",
+      "entity_type": "task",
+      "entity_id": "T-002",
+      "user": "system",
+      "details": {},
+      "severity": "error"
+    },
+    {
+      "id": 6,
+      "timestamp": "2026-05-05T08:43:36.669158Z",
+      "action": "security_alert",
+      "entity_type": "system",
+      "entity_id": "auth",
+      "user": "unknown",
+      "details": {},
+      "severity": "critical"
+    },
+    {
+      "id": 7,
+      "timestamp": "2026-05-05T08:43:59.717544Z",
+      "action": "task_created",
+      "entity_type": "task",
+      "entity_id": "T-001",
+      "user": "admin",
+      "details": {},
+      "severity": "info"
+    },
+    {
+      "id": 8,
+      "timestamp": "2026-05-05T08:43:59.763600Z",
+      "action": "task_updated",
+      "entity_type": "task",
+      "entity_id": "T-001",
+      "user": "admin",
+      "details": {},
+      "severity": "info"
+    },
+    {
+      "id": 9,
+      "timestamp": "2026-05-05T08:43:59.784094Z",
+      "action": "task_failed",
+      "entity_type": "task",
+      "entity_id": "T-002",
+      "user": "system",
+      "details": {},
+      "severity": "error"
+    },
+    {
+      "id": 10,
+      "timestamp": "2026-05-05T08:43:59.802287Z",
+      "action": "security_alert",
+      "entity_type": "system",
+      "entity_id": "auth",
+      "user": "unknown",
+      "details": {},
+      "severity": "critical"
+    }
+  ],
+  "next_id": 11
+}

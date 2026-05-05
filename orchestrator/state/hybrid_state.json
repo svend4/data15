@@ -1,0 +1,19 @@
+{
+  "version": "3.0-hybrid",
+  "created": "2026-05-04T15:19:22.278153Z",
+  "updated": "2026-05-05T08:43:58.817712Z",
+  "mode": "hybrid",
+  "stats": {
+    "total": 0,
+    "completed": 0
+  },
+  "agents": {
+    "Hermes": true,
+    "OpenClaw": true
+  },
+  "layers": [
+    "camel",
+    "multica",
+    "execution"
+  ]
+}

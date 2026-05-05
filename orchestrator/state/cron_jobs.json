@@ -1,0 +1,34 @@
+{
+  "jobs": [
+    {
+      "id": "CJ-001",
+      "name": "Daily Report",
+      "command": "analyze market trends",
+      "cron_expr": "0 9 * * *",
+      "enabled": false,
+      "last_run": null,
+      "next_run": null,
+      "created": "2026-05-04T19:04:26.308140Z"
+    },
+    {
+      "id": "CJ-002",
+      "name": "Weekly Summary",
+      "command": "analyze weekly data",
+      "cron_expr": "0 10 * * 1",
+      "enabled": true,
+      "last_run": null,
+      "next_run": null,
+      "created": "2026-05-04T19:09:14.663047Z"
+    },
+    {
+      "id": "CJ-003",
+      "name": "Hourly Check",
+      "command": "status",
+      "cron_expr": "0 * * * *",
+      "enabled": true,
+      "last_run": null,
+      "next_run": null,
+      "created": "2026-05-04T19:09:14.764189Z"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "openai_api_key": "REDACTED",
+  "api_provider": "openai",
+  "openclaw_enabled": true,
+  "cache_enabled": true,
+  "cache_ttl": 3600,
+  "version": "4.0"
+}

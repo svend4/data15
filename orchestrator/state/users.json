@@ -1,0 +1,12 @@
+{
+  "admin": {
+    "password_hash": "8c6976e5b5410415",
+    "role": "admin",
+    "created": "2026-05-05T05:54:27.306308Z"
+  },
+  "analyst1": {
+    "password_hash": "80e9d0efe2d4f822",
+    "role": "operator",
+    "created": "2026-05-05T05:54:27.324135Z"
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "entries": [
+    {
+      "id": "HE-000001",
+      "task_id": "T-214",
+      "action": "created_from_template",
+      "details": {
+        "template": "bug_report"
+      },
+      "user": "system",
+      "timestamp": "2026-05-05T06:59:56.375228Z"
+    },
+    {
+      "id": "HE-000002",
+      "task_id": "T-215",
+      "action": "created_from_template",
+      "details": {
+        "template": "bug_report"
+      },
+      "user": "system",
+      "timestamp": "2026-05-05T07:00:25.106370Z"
+    },
+    {
+      "id": "HE-000003",
+      "task_id": "T-001",
+      "action": "comment_added",
+      "details": {
+        "comment_id": 1
+      },
+      "user": "admin",
+      "timestamp": "2026-05-05T07:00:25.155239Z"
+    },
+    {
+      "id": "HE-000004",
+      "task_id": "T-216",
+      "action": "bulk_status_update",
+      "details": {
+        "status": "in_progress"
+      },
+      "user": "system",
+      "timestamp": "2026-05-05T07:27:31.941116Z"
+    },
+    {
+      "id": "HE-000005",
+      "task_id": "T-217",
+      "action": "bulk_status_update",
+      "details": {
+        "status": "in_progress"
+      },
+      "user": "system",
+      "timestamp": "2026-05-05T07:27:31.996880Z"
+    },
+    {
+      "id": "HE-000006",
+      "task_id": "T-218",
+      "action": "bulk_status_update",
+      "details": {
+        "status": "in_progress"
+      },
+      "user": "system",
+      "timestamp": "2026-05-05T07:28:22.827759Z"
+    },
+    {
+      "id": "HE-000007",
+      "task_id": "T-219",
+      "action": "bulk_status_update",
+      "details": {
+        "status": "in_progress"
+      },
+      "user": "system",
+      "timestamp": "2026-05-05T07:28:22.892688Z"
+    }
+  ],
+  "by_task": {
+    "T-214": ["HE-000001"],
+    "T-215": ["HE-000002"],
+    "T-001": ["HE-000003"],
+    "T-216": ["HE-000004"],
+    "T-217": ["HE-000005"],
+    "T-218": ["HE-000006"],
+    "T-219": ["HE-000007"]
+  }
+}

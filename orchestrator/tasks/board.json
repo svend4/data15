@@ -1,0 +1,89 @@
+{
+  "version": "1.0",
+  "created": "2026-05-04T23:00:00Z",
+  "updated": "2026-05-04T15:13:02.259217Z",
+  "stats": {
+    "total": 3,
+    "queued": 2,
+    "running": 0,
+    "completed": 1,
+    "failed": 0,
+    "blocked": 0
+  },
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "Test task for Orchestrator",
+      "description": "",
+      "agent": "Hermes",
+      "status": "queued",
+      "priority": "medium",
+      "created": "2026-05-04T15:07:13.717422Z",
+      "updated": "2026-05-04T15:07:13.717422Z",
+      "progress": 0,
+      "dependencies": [],
+      "blocked_by": [],
+      "subtasks": [],
+      "comments": [],
+      "runs": [],
+      "layer": "execution",
+      "complexity": 5,
+      "tags": []
+    },
+    {
+      "id": "T-002",
+      "title": "Second test task",
+      "description": "",
+      "agent": "Hermes",
+      "status": "queued",
+      "priority": "medium",
+      "created": "2026-05-04T15:07:13.822893Z",
+      "updated": "2026-05-04T15:07:13.822893Z",
+      "progress": 0,
+      "dependencies": [],
+      "blocked_by": [],
+      "subtasks": [],
+      "comments": [],
+      "runs": [],
+      "layer": "execution",
+      "complexity": 5,
+      "tags": []
+    },
+    {
+      "id": "T-003",
+      "title": "Test web-task: Find info about Python",
+      "description": "OpenClaw integration check",
+      "agent": "OpenClaw",
+      "status": "completed",
+      "priority": "medium",
+      "created": "2026-05-04T15:13:02.259217Z",
+      "updated": "2026-05-04T15:13:06.475556Z",
+      "progress": 100,
+      "dependencies": [],
+      "blocked_by": [],
+      "subtasks": [],
+      "comments": [],
+      "runs": [
+        {
+          "id": "a3773cde",
+          "agent": "OpenClaw",
+          "command": "Starting external integration: Test web-task",
+          "output": "",
+          "status": "running",
+          "timestamp": "2026-05-04T15:13:02.282715Z"
+        },
+        {
+          "id": "99bb7044",
+          "agent": "OpenClaw",
+          "command": "Completed",
+          "output": "[OpenClaw Real] Exit code 1: Failed to start CLI",
+          "status": "completed",
+          "timestamp": "2026-05-04T15:13:06.453124Z"
+        }
+      ],
+      "layer": "execution",
+      "complexity": 5,
+      "tags": []
+    }
+  ]
+}

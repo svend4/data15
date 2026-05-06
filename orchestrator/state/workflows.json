@@ -3,188 +3,182 @@
     {
       "id": 1,
       "name": "Test Workflow",
+      "description": "Basic test workflow",
       "steps": [
-        {
-          "name": "Create Task",
-          "type": "action",
-          "action": "create_task",
-          "title": "Workflow Test Task"
-        },
-        {
-          "name": "Delay",
-          "type": "delay",
-          "seconds": 0
-        },
-        {
-          "name": "Update Status",
-          "type": "action",
-          "action": "update_status",
-          "status": "in_progress"
-        }
+        {"name": "create", "type": "action", "action": "create_task", "title": "Test Task", "agent": "Hermes"},
+        {"name": "wait",   "type": "delay",  "seconds": 1},
+        {"name": "done",   "type": "action", "action": "update_status", "status": "completed"}
       ],
-      "trigger": {
-        "type": "manual"
-      },
-      "enabled": true,
-      "created": "2026-05-05T07:44:54.776338Z"
+      "created": "2026-05-04T23:00:00Z"
     },
     {
       "id": 2,
-      "name": "Test Automation Workflow",
+      "name": "research_and_analyze",
+      "description": "OpenClaw ищет данные во внешних источниках, Hermes анализирует и синтезирует итоговый отчёт.",
       "steps": [
         {
-          "name": "\u0421\u043e\u0437\u0434\u0430\u0442\u044c \u0437\u0430\u0434\u0430\u0447\u0443",
+          "name": "external_search",
           "type": "action",
-          "action": "create_task",
-          "title": "\u0410\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u0437\u0430\u0434\u0430\u0447\u0430 \u0438\u0437 workflow",
+          "action": "call_openclaw",
+          "prompt": "Search and summarize information about: {goal}",
           "critical": true
         },
         {
-          "name": "\u0423\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435",
+          "name": "internal_analysis",
+          "type": "action",
+          "action": "call_hermes",
+          "prompt": "Analyze and provide insights on the following research data:\n\n{openclaw_result}\n\nOriginal goal: {goal}",
+          "critical": true
+        },
+        {
+          "name": "save_result",
+          "type": "action",
+          "action": "create_task",
+          "title": "Research result: {goal}",
+          "agent": "Hermes",
+          "priority": "medium"
+        },
+        {
+          "name": "notify_done",
           "type": "action",
           "action": "notify",
-          "channel": "system",
-          "message": "Workflow \u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d!"
+          "channel": "research_and_analyze",
+          "message": "Workflow complete for goal: {goal}",
+          "level": "info"
         }
       ],
-      "trigger": {
-        "type": "manual"
-      },
-      "enabled": true,
-      "created": "2026-05-05T08:43:35.830540Z"
+      "created": "2026-05-05T00:00:00Z"
     },
     {
       "id": 3,
-      "name": "Test Automation Workflow",
+      "name": "decompose_and_execute",
+      "description": "CAMEL декомпозирует цель на подзадачи, Multica создаёт их на доске, агенты выполняют параллельно.",
       "steps": [
         {
-          "name": "\u0421\u043e\u0437\u0434\u0430\u0442\u044c \u0437\u0430\u0434\u0430\u0447\u0443",
+          "name": "decompose_goal",
           "type": "action",
-          "action": "create_task",
-          "title": "\u0410\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u0437\u0430\u0434\u0430\u0447\u0430 \u0438\u0437 workflow",
+          "action": "call_camel",
+          "goal": "{goal}",
+          "depth": 3,
           "critical": true
         },
         {
-          "name": "\u0423\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435",
+          "name": "create_in_multica",
+          "type": "action",
+          "action": "call_multica",
+          "title": "Decomposed: {goal}",
+          "agent": "Hermes",
+          "priority": "high"
+        },
+        {
+          "name": "execute_research_phase",
+          "type": "action",
+          "action": "call_openclaw",
+          "prompt": "Research phase for: {goal}"
+        },
+        {
+          "name": "execute_analysis_phase",
+          "type": "action",
+          "action": "call_hermes",
+          "prompt": "Analysis phase. Goal: {goal}\nResearch data: {openclaw_result}"
+        },
+        {
+          "name": "finalize",
           "type": "action",
           "action": "notify",
-          "channel": "system",
-          "message": "Workflow \u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d!"
+          "channel": "decompose_and_execute",
+          "message": "All phases complete for: {goal}",
+          "level": "info"
         }
       ],
-      "trigger": {
-        "type": "manual"
-      },
-      "enabled": true,
-      "created": "2026-05-05T08:43:58.865741Z"
-    }
-  ],
-  "executions": [
-    {
-      "id": "WF-1-1",
-      "workflow_id": 1,
-      "workflow_name": "Test Workflow",
-      "status": "completed",
-      "started_at": "2026-05-05T07:44:54.791299Z",
-      "completed_at": "2026-05-05T07:44:54.830715Z",
-      "current_step": 2,
-      "context": {
-        "last_task_id": "T-225"
-      },
-      "results": [
-        {
-          "step": 0,
-          "step_name": "Create Task",
-          "status": "completed",
-          "result": {
-            "success": true,
-            "task_id": "T-225"
-          }
-        },
-        {
-          "step": 1,
-          "step_name": "Delay",
-          "status": "completed",
-          "result": {
-            "success": true
-          }
-        },
-        {
-          "step": 2,
-          "step_name": "Update Status",
-          "status": "completed",
-          "result": {
-            "success": true
-          }
-        }
-      ]
+      "created": "2026-05-05T00:00:00Z"
     },
     {
-      "id": "WF-2-2",
-      "workflow_id": 2,
-      "workflow_name": "Test Automation Workflow",
-      "status": "completed",
-      "started_at": "2026-05-05T08:43:35.850056Z",
-      "completed_at": "2026-05-05T08:43:35.915036Z",
-      "current_step": 1,
-      "context": {
-        "context_var": "test_value",
-        "last_task_id": "T-226"
-      },
-      "results": [
+      "id": 4,
+      "name": "monitor_and_report",
+      "description": "Проверяет здоровье системы, собирает метрики и отправляет уведомление.",
+      "steps": [
         {
-          "step": 0,
-          "step_name": "\u0421\u043e\u0437\u0434\u0430\u0442\u044c \u0437\u0430\u0434\u0430\u0447\u0443",
-          "status": "completed",
-          "result": {
-            "success": true,
-            "task_id": "T-226"
-          }
+          "name": "health_check",
+          "type": "action",
+          "action": "create_task",
+          "title": "System health check",
+          "agent": "Hermes",
+          "priority": "low"
         },
         {
-          "step": 1,
-          "step_name": "\u0423\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435",
-          "status": "failed",
-          "result": {
-            "success": false,
-            "error": "'NotificationManager' object has no attribute 'send'"
-          }
+          "name": "run_hermes_check",
+          "type": "action",
+          "action": "call_hermes",
+          "prompt": "Check system status and summarize: board tasks, active agents, recent errors."
+        },
+        {
+          "name": "update_done",
+          "type": "action",
+          "action": "update_status",
+          "status": "completed"
+        },
+        {
+          "name": "notify_report",
+          "type": "action",
+          "action": "notify",
+          "channel": "monitor_and_report",
+          "message": "Health report ready: {hermes_result}",
+          "level": "info"
         }
-      ]
+      ],
+      "created": "2026-05-05T00:00:00Z"
     },
     {
-      "id": "WF-3-3",
-      "workflow_id": 3,
-      "workflow_name": "Test Automation Workflow",
-      "status": "completed",
-      "started_at": "2026-05-05T08:43:58.881513Z",
-      "completed_at": "2026-05-05T08:43:58.928116Z",
-      "current_step": 1,
-      "context": {
-        "context_var": "test_value",
-        "last_task_id": "T-230"
-      },
-      "results": [
+      "id": 5,
+      "name": "full_pipeline",
+      "description": "Полный пайплайн: CAMEL декомпозирует → OpenClaw исследует → Hermes анализирует → Multica сохраняет.",
+      "steps": [
         {
-          "step": 0,
-          "step_name": "\u0421\u043e\u0437\u0434\u0430\u0442\u044c \u0437\u0430\u0434\u0430\u0447\u0443",
-          "status": "completed",
-          "result": {
-            "success": true,
-            "task_id": "T-230"
-          }
+          "name": "decompose",
+          "type": "action",
+          "action": "call_camel",
+          "goal": "{goal}",
+          "depth": 3,
+          "critical": true
         },
         {
-          "step": 1,
-          "step_name": "\u0423\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435",
-          "status": "failed",
-          "result": {
-            "success": false,
-            "error": "'NotificationManager' object has no attribute 'send'"
-          }
+          "name": "research",
+          "type": "action",
+          "action": "run_skill",
+          "skill": "openclaw_web_search"
+        },
+        {
+          "name": "analyze",
+          "type": "action",
+          "action": "call_hermes",
+          "prompt": "Full analysis. Goal: {goal}\nCAMEL tasks: {camel_tasks}\nResearch: {openclaw_result}"
+        },
+        {
+          "name": "combine",
+          "type": "action",
+          "action": "run_skill",
+          "skill": "combine_results"
+        },
+        {
+          "name": "persist_multica",
+          "type": "action",
+          "action": "call_multica",
+          "title": "Pipeline result: {goal}",
+          "agent": "Hermes",
+          "priority": "high"
+        },
+        {
+          "name": "done_notify",
+          "type": "action",
+          "action": "notify",
+          "channel": "full_pipeline",
+          "message": "Full pipeline complete: {goal}",
+          "level": "info"
         }
-      ]
+      ],
+      "created": "2026-05-05T00:00:00Z"
     }
   ],
-  "next_id": 4
+  "executions": []
 }

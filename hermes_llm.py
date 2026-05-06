@@ -245,4 +245,17 @@ def test_hermes_llm():
 
 
 if __name__ == "__main__":
-    test_hermes_llm()
+    import sys
+    if len(sys.argv) > 1:
+        # Called by WorkflowEngine fallback: python3 hermes_llm.py "<prompt>"
+        prompt = " ".join(sys.argv[1:])
+        task_id = f"CLI-{int(__import__('time').time())}"
+        hermes = get_hermes_llm()
+        result = hermes.analyze(task_id, prompt)
+        if result["status"] == "completed":
+            print(result.get("analysis", ""))
+        else:
+            print(f"[hermes_llm] Error: {result.get('error', 'unknown')}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        test_hermes_llm()

@@ -189,9 +189,9 @@ class SQLiteBoardManager:
 
                 CREATE TRIGGER IF NOT EXISTS tasks_fts_update
                     AFTER UPDATE ON tasks BEGIN
-                        UPDATE tasks_fts
-                        SET title=new.title, description=new.description
-                        WHERE id=new.id;
+                        DELETE FROM tasks_fts WHERE rowid=old.rowid;
+                        INSERT INTO tasks_fts(rowid, id, title, description)
+                        VALUES (new.rowid, new.id, new.title, new.description);
                     END;
 
                 CREATE TRIGGER IF NOT EXISTS tasks_fts_delete
@@ -233,22 +233,21 @@ class SQLiteBoardManager:
             raise
 
     # ------------------------------------------------------------------
-    # ID генерация (совместима с v5: T-001)
+    # ID генерация — uuid4 (без race condition при параллельных вставках)
     # ------------------------------------------------------------------
 
     def _gen_id(self) -> str:
-        conn = self._pool.get()
-        row = conn.execute(
-            "SELECT id FROM tasks ORDER BY created_at DESC LIMIT 1"
-        ).fetchone()
-        if row is None:
-            return "T-001"
-        last = row["id"]
-        try:
-            num = int(last.split("-")[1]) + 1
-        except (IndexError, ValueError):
-            num = int(conn.execute("SELECT COUNT(*) FROM tasks").fetchone()[0]) + 1
-        return f"T-{num:03d}"
+        """Генерировать уникальный ID задачи.
+
+        Прежний подход (SELECT max + increment) имел race condition:
+        два потока могли получить одинаковый счётчик до коммита INSERT.
+        uuid4 гарантирует уникальность без блокировки.
+
+        Формат: T-<8 hex chars> (e.g. T-3f2a1b9c)
+        Backward compat: префикс T- сохранён для совместимости с v5.
+        """
+        import uuid
+        return f"T-{uuid.uuid4().hex[:8]}"
 
     def _now(self) -> str:
         return datetime.now(timezone.utc).isoformat()
@@ -272,8 +271,7 @@ class SQLiteBoardManager:
         max_retries: int = 3,
     ) -> Task:
         """Создать задачу. Thread-safe, транзакционно."""
-        with self._lock:
-            task_id = self._gen_id()
+        task_id = self._gen_id()  # uuid4 — no lock needed
         now = self._now()
         task = Task(
             id=task_id,

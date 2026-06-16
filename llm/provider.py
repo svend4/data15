@@ -391,6 +391,10 @@ class FallbackProvider(LLMProvider):
     name = "fallback"
 
     def __init__(self, providers: list[LLMProvider]) -> None:
+        # Must call super().__init__ so .model / .temperature / .max_tokens etc.
+        # are defined — FallbackProvider.complete() delegates to sub-providers
+        # but callers may still inspect these attributes via repr() or logging.
+        super().__init__({})
         self._providers = [p for p in providers if p.is_available()]
         if not self._providers:
             self._providers = [BuiltinProvider({})]

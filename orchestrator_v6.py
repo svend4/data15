@@ -327,7 +327,7 @@ class OrchestratorV6:
             logger.error(f"Задача {task_id} не найдена")
             return None
 
-        self.board.update_status(task_id, "in_progress")
+        self.board.update_status(task_id, "running")
         t0 = time.perf_counter()
 
         try:
@@ -340,7 +340,7 @@ class OrchestratorV6:
             else:
                 result = f"[unknown agent {task.agent}] {task.description}"
 
-            self.board.update_status(task_id, "done", result=result)
+            self.board.update_status(task_id, "completed", cached_result=result)
 
             # Сохранить результат в базу знаний
             if self.knowledge and result:
@@ -369,8 +369,8 @@ class OrchestratorV6:
 
         def worker():
             while self._running:
-                # Найти задачи в состоянии pending и взять их в работу
-                pending = self.board.list_tasks(status="pending", limit=10)
+                # Найти задачи в состоянии queued и взять их в работу
+                pending = self.board.list_tasks(status="queued", limit=10)
                 for task in pending:
                     if not self._running:
                         break
@@ -521,7 +521,7 @@ class OrchestratorV6:
             return True
         for dep_id in task.dependencies:
             dep = self.board.get_task(dep_id)
-            if not dep or dep.status != "done":
+            if not dep or dep.status != "completed":
                 return False
         return True
 
@@ -571,7 +571,8 @@ class _MemoryBoard:
     def get_task(self, task_id: str) -> Optional[_MemTask]:
         return self._tasks.get(task_id)
 
-    def update_status(self, task_id: str, status: str, result: str = "") -> bool:
+    def update_status(self, task_id: str, status: str,
+                      cached_result: str = "", **kwargs) -> bool:
         if task_id in self._tasks:
             self._tasks[task_id].status = status
             return True

@@ -25,6 +25,7 @@ import math
 import os
 import re
 import sqlite3
+import threading
 import time
 import uuid
 from abc import ABC, abstractmethod
@@ -227,15 +228,30 @@ class _SQLiteTFIDFBackend(_VectorBackend):
 
     def __init__(self, db_path: str) -> None:
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(db_path, check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
+        self._db_path = db_path
+        # Thread-local storage — each thread gets its own sqlite3.Connection.
+        # A single shared connection under concurrent writes raises
+        # sqlite3.ProgrammingError ("SQLite objects created in a thread …").
+        self._local = threading.local()
+        self._db_lock = threading.Lock()  # serialise writes
         self._init_schema()
         self._idf_cache: dict[str, float] = {}
         self._idf_dirty = True
 
+    def _get_conn(self) -> sqlite3.Connection:
+        """Return (or create) a thread-local SQLite connection."""
+        if not hasattr(self._local, "conn") or self._local.conn is None:
+            conn = sqlite3.connect(self._db_path, check_same_thread=False)
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA foreign_keys=ON")
+            self._local.conn = conn
+        return self._local.conn
+
     def _init_schema(self) -> None:
-        with self._conn:
-            self._conn.executescript("""
+        conn = self._get_conn()
+        with conn:
+            conn.executescript("""
                 CREATE TABLE IF NOT EXISTS kb_articles (
                     id         TEXT PRIMARY KEY,
                     title      TEXT NOT NULL,
@@ -258,10 +274,12 @@ class _SQLiteTFIDFBackend(_VectorBackend):
                     VALUES(new.rowid,new.id,new.title,new.content);
                 END;
                 CREATE TRIGGER IF NOT EXISTS kb_ad AFTER DELETE ON kb_articles BEGIN
-                    DELETE FROM kb_fts WHERE id=old.id;
+                    DELETE FROM kb_fts WHERE rowid=old.rowid;
                 END;
                 CREATE TRIGGER IF NOT EXISTS kb_au AFTER UPDATE ON kb_articles BEGIN
-                    UPDATE kb_fts SET title=new.title,content=new.content WHERE id=new.id;
+                    DELETE FROM kb_fts WHERE rowid=old.rowid;
+                    INSERT INTO kb_fts(rowid,id,title,content)
+                    VALUES(new.rowid,new.id,new.title,new.content);
                 END;
             """)
 
@@ -277,7 +295,7 @@ class _SQLiteTFIDFBackend(_VectorBackend):
         return {t: c / total for t, c in counter.items()}
 
     def _compute_idf(self) -> None:
-        rows = self._conn.execute("SELECT title, content FROM kb_articles").fetchall()
+        rows = self._get_conn().execute("SELECT title, content FROM kb_articles").fetchall()
         n = len(rows)
         if n == 0:
             self._idf_cache = {}
@@ -307,18 +325,20 @@ class _SQLiteTFIDFBackend(_VectorBackend):
         return min(1.0, score / max_possible)
 
     def add(self, article: Article) -> None:
-        with self._conn:
-            self._conn.execute(
-                "INSERT OR REPLACE INTO kb_articles "
-                "(id,title,content,category,tags,source,created_at,view_count,metadata) "
-                "VALUES (?,?,?,?,?,?,?,?,?)",
-                (
-                    article.id, article.title, article.content,
-                    article.category, json.dumps(article.tags),
-                    article.source, article.created_at,
-                    article.view_count, json.dumps(article.metadata),
-                ),
-            )
+        conn = self._get_conn()
+        with self._db_lock:
+            with conn:
+                conn.execute(
+                    "INSERT OR REPLACE INTO kb_articles "
+                    "(id,title,content,category,tags,source,created_at,view_count,metadata) "
+                    "VALUES (?,?,?,?,?,?,?,?,?)",
+                    (
+                        article.id, article.title, article.content,
+                        article.category, json.dumps(article.tags),
+                        article.source, article.created_at,
+                        article.view_count, json.dumps(article.metadata),
+                    ),
+                )
         self._idf_dirty = True
 
     def search(self, query: str, top_k: int = 5, category: Optional[str] = None) -> list[SearchResult]:
@@ -326,9 +346,10 @@ class _SQLiteTFIDFBackend(_VectorBackend):
         where = "WHERE a.category = ?" if category else ""
         params: list[Any] = [category] if category else []
 
+        conn = self._get_conn()
         try:
             fts_query = " OR ".join(self._tokenize(query)[:5]) or query
-            rows = self._conn.execute(
+            rows = conn.execute(
                 f"""
                 SELECT a.* FROM kb_articles a
                 JOIN kb_fts f ON a.id = f.id
@@ -338,7 +359,7 @@ class _SQLiteTFIDFBackend(_VectorBackend):
                 ([fts_query] + ([category] if category else []) + [top_k * 3]),
             ).fetchall()
         except Exception:
-            rows = self._conn.execute(
+            rows = conn.execute(
                 f"SELECT * FROM kb_articles {where} LIMIT ?",
                 params + [top_k * 3],
             ).fetchall()
@@ -363,21 +384,39 @@ class _SQLiteTFIDFBackend(_VectorBackend):
         return results[:top_k]
 
     def delete(self, article_id: str) -> bool:
-        with self._conn:
-            cur = self._conn.execute("DELETE FROM kb_articles WHERE id=?", (article_id,))
+        conn = self._get_conn()
+        with self._db_lock:
+            with conn:
+                cur = conn.execute("DELETE FROM kb_articles WHERE id=?", (article_id,))
         self._idf_dirty = True
         return cur.rowcount > 0
 
+    def get_by_id(self, article_id: str) -> Optional[Article]:
+        """Direct O(1) lookup by primary key — replaces O(n) list_all() scan."""
+        row = self._get_conn().execute(
+            "SELECT * FROM kb_articles WHERE id=?", (article_id,)
+        ).fetchone()
+        if row is None:
+            return None
+        return Article(
+            id=row["id"], title=row["title"], content=row["content"],
+            category=row["category"], tags=json.loads(row["tags"] or "[]"),
+            source=row["source"] or "", created_at=row["created_at"] or "",
+            view_count=row["view_count"] or 0,
+            metadata=json.loads(row["metadata"] or "{}"),
+        )
+
     def count(self) -> int:
-        return self._conn.execute("SELECT COUNT(*) FROM kb_articles").fetchone()[0]
+        return self._get_conn().execute("SELECT COUNT(*) FROM kb_articles").fetchone()[0]
 
     def list_all(self, category: Optional[str] = None) -> list[Article]:
+        conn = self._get_conn()
         if category:
-            rows = self._conn.execute(
+            rows = conn.execute(
                 "SELECT * FROM kb_articles WHERE category=? ORDER BY created_at DESC", (category,)
             ).fetchall()
         else:
-            rows = self._conn.execute(
+            rows = conn.execute(
                 "SELECT * FROM kb_articles ORDER BY created_at DESC"
             ).fetchall()
         return [
@@ -438,6 +477,7 @@ class VectorKnowledgeBase:
         source: str = "",
         metadata: Optional[dict] = None,
     ) -> Article:
+        from datetime import datetime, timezone as _tz
         article = Article(
             id=str(uuid.uuid4()),
             title=title,
@@ -445,7 +485,7 @@ class VectorKnowledgeBase:
             category=category,
             tags=tags or [],
             source=source,
-            created_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            created_at=datetime.now(_tz.utc).isoformat(),  # consistent with sqlite_board
             metadata=metadata or {},
         )
         self._backend.add(article)
@@ -456,8 +496,35 @@ class VectorKnowledgeBase:
         return self._backend.search(query, top_k=top_k, category=category)
 
     def get_article(self, article_id: str) -> Optional[Article]:
-        results = self._backend.list_all()
-        for a in results:
+        """O(1) lookup by ID — uses direct DB query (was O(n) full-scan before)."""
+        # SQLite backend exposes get_by_id(); ChromaDB falls back to .get(ids=[...])
+        if hasattr(self._backend, "get_by_id"):
+            return self._backend.get_by_id(article_id)
+        # ChromaDB backend: use collection.get
+        if hasattr(self._backend, "_col"):
+            try:
+                result = self._backend._col.get(
+                    ids=[article_id], include=["metadatas", "documents"]
+                )
+                if not result["ids"]:
+                    return None
+                meta = result["metadatas"][0]
+                doc  = result["documents"][0]
+                title = meta.get("title", "")
+                return Article(
+                    id=result["ids"][0],
+                    title=title,
+                    content=doc.replace(title, "", 1).strip(),
+                    category=meta.get("category", "general"),
+                    tags=json.loads(meta.get("tags", "[]")),
+                    source=meta.get("source", ""),
+                    created_at=meta.get("created_at", ""),
+                    view_count=int(meta.get("view_count", 0)),
+                )
+            except Exception:
+                pass
+        # Fallback: linear scan (should not be reached normally)
+        for a in self._backend.list_all():
             if a.id == article_id:
                 return a
         return None

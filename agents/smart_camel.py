@@ -27,6 +27,7 @@ from __future__ import annotations
 import json
 import re
 import time
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -142,7 +143,10 @@ class SmartCAMEL:
     ) -> None:
         self._provider = provider or get_provider()
         self._temperature = temperature
-        self._cache: dict[str, DecompositionPlan] = {}
+        # Bounded LRU cache — prevents unbounded memory growth in long-running processes.
+        # OrderedDict preserves insertion order; we evict the oldest entry when full.
+        self._cache: OrderedDict[str, DecompositionPlan] = OrderedDict()
+        self._cache_maxsize: int = 128
 
     def decompose(
         self,
@@ -166,6 +170,7 @@ class SmartCAMEL:
         cache_key = f"{goal}|{depth_hint}"
         if use_cache and cache_key in self._cache:
             plan = self._cache[cache_key]
+            self._cache.move_to_end(cache_key)  # mark as recently used
             plan.latency_ms = 0
             return plan
 
@@ -189,6 +194,8 @@ class SmartCAMEL:
             plan = self._structural_fallback(goal, latency)
 
         if use_cache:
+            if len(self._cache) >= self._cache_maxsize:
+                self._cache.popitem(last=False)  # evict oldest entry (LRU)
             self._cache[cache_key] = plan
 
         return plan

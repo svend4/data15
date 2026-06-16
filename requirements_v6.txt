@@ -10,9 +10,9 @@
 #
 # ============================================================
 
-# ── Core (из v5, сохранены) ─────────────────────────────────
-flask>=2.3.0
-werkzeug>=2.3.0
+# ── Core ────────────────────────────────────────────────────
+# v6 uses stdlib http.server — Flask and Werkzeug are NOT used and were
+# removed to avoid pulling in ~12 MB of unused dependencies.
 
 # ── v6: Векторная база знаний ───────────────────────────────
 # Вариант A: ChromaDB (рекомендуется, production-quality)

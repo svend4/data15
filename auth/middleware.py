@@ -38,6 +38,7 @@ import json
 import os
 import re
 import time
+import warnings
 from dataclasses import dataclass, field
 from enum import IntEnum
 from http.server import BaseHTTPRequestHandler
@@ -174,12 +175,45 @@ class JWTError(Exception):
 # ---------------------------------------------------------------------------
 
 def hash_password(password: str) -> str:
-    """SHA-256 хэш пароля (без salt для простоты; в production — bcrypt)."""
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+    """
+    PBKDF2-SHA256 хэш пароля с salt.
+
+    Формат: pbkdf2:sha256:<iterations>:<salt_hex>:<hash_hex>
+
+    Backward compat: если передан старый SHA-256 хэш (64 hex chars),
+    check_password() всё ещё принимает его, но hash_password() всегда
+    генерирует новый PBKDF2-формат.
+    """
+    salt = os.urandom(16)
+    iterations = 260_000  # OWASP minimum 2024
+    key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
+    return f"pbkdf2:sha256:{iterations}:{salt.hex()}:{key.hex()}"
 
 
 def check_password(password: str, password_hash: str) -> bool:
-    return hmac.compare_digest(hash_password(password), password_hash)
+    """
+    Проверить пароль против сохранённого хэша.
+
+    Поддерживает:
+    • Новый формат pbkdf2:sha256:<iter>:<salt>:<hash>
+    • Старый формат (plain SHA-256, 64 hex chars) — для backward compat
+    """
+    if password_hash.startswith("pbkdf2:"):
+        parts = password_hash.split(":")
+        if len(parts) != 5:
+            return False
+        _, algo, iterations_str, salt_hex, stored_hex = parts
+        try:
+            iterations = int(iterations_str)
+            salt = bytes.fromhex(salt_hex)
+            key = hashlib.pbkdf2_hmac(algo, password.encode("utf-8"), salt, iterations)
+        except (ValueError, TypeError):
+            return False
+        return hmac.compare_digest(key.hex(), stored_hex)
+    else:
+        # Legacy SHA-256 (plain, no salt) — still accepted but deprecated
+        legacy = hashlib.sha256(password.encode("utf-8")).hexdigest()
+        return hmac.compare_digest(legacy, password_hash)
 
 
 # ---------------------------------------------------------------------------
@@ -245,9 +279,41 @@ class JWTAuth:
         secret = os.environ.get(secret_env, "") or auth_cfg.get("secret_key", "")
 
         if not secret and enabled:
-            # Сгенерировать случайный секрет и сохранить в конфиг
-            secret = base64.urlsafe_b64encode(os.urandom(32)).decode()
-            print(f"[JWTAuth] Generated ephemeral secret (set {secret_env} for persistence)")
+            # Попробовать загрузить ранее сохранённый секрет из файла
+            _secret_file = Path("orchestrator/state/.jwt_secret")
+            if _secret_file.exists():
+                try:
+                    secret = _secret_file.read_text(encoding="utf-8").strip()
+                    print(f"[JWTAuth] Loaded persisted JWT secret from {_secret_file}")
+                except OSError:
+                    pass
+
+            if not secret:
+                # Сгенерировать новый и сохранить
+                secret = base64.urlsafe_b64encode(os.urandom(32)).decode()
+                try:
+                    _secret_file.parent.mkdir(parents=True, exist_ok=True)
+                    _secret_file.write_text(secret, encoding="utf-8")
+                    print(f"[JWTAuth] Generated and persisted JWT secret → {_secret_file}")
+                    print(f"[JWTAuth] Tip: set env var {secret_env} to override.")
+                except OSError:
+                    print(
+                        f"[JWTAuth] WARNING: Could not persist JWT secret "
+                        f"— tokens will be invalidated on restart. "
+                        f"Set {secret_env} env var for production use."
+                    )
+
+        if enabled and auth_cfg.get("users"):
+            # Warn if any user still has a legacy SHA-256 hash (no salt)
+            for uname, udata in auth_cfg.get("users", {}).items():
+                ph = udata.get("password_hash", "")
+                if ph and not ph.startswith("pbkdf2:") and len(ph) == 64:
+                    warnings.warn(
+                        f"[JWTAuth] User '{uname}' has a legacy unsalted SHA-256 password hash. "
+                        f"Re-hash with: python -m auth.middleware hash <password>",
+                        UserWarning,
+                        stacklevel=2,
+                    )
 
         return cls(
             secret=secret or "dev-secret-change-me",

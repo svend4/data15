@@ -50,10 +50,15 @@ def _require_streamlit():
 # ---------------------------------------------------------------------------
 
 STATUS_EMOJI = {
+    "queued":    "⏳",
+    "running":   "🔄",
+    "completed": "✅",
+    "failed":    "❌",
+    "blocked":   "🔒",
+    # backward-compat aliases (old vocabulary)
     "pending":     "⏳",
     "in_progress": "🔄",
     "done":        "✅",
-    "failed":      "❌",
     "cancelled":   "🚫",
 }
 
@@ -151,8 +156,8 @@ def page_kanban(st, board) -> None:
     # Фильтр по агенту
     agent = None if agent_filter == "Все" else agent_filter
 
-    # Загрузить задачи по статусам
-    statuses = ["pending", "in_progress", "done", "failed"]
+    # Загрузить задачи по статусам (sqlite_board vocabulary)
+    statuses = ["queued", "running", "completed", "failed"]
     cols = st.columns(4)
     col_labels = ["⏳ Ожидание", "🔄 Выполнение", "✅ Готово", "❌ Ошибка"]
 
@@ -185,15 +190,15 @@ def _task_card(st, task, board) -> None:
 """, unsafe_allow_html=True)
 
         # Кнопки действий (только для незавершённых)
-        if task.status not in ("done", "failed", "cancelled"):
+        if task.status not in ("completed", "failed", "blocked"):
             c1, c2 = st.columns(2)
             with c1:
                 if st.button("▶ Старт", key=f"start_{task.id}", use_container_width=True):
-                    board.update_status(task.id, "in_progress")
+                    board.update_status(task.id, "running")
                     st.rerun()
             with c2:
                 if st.button("✖ Отмена", key=f"cancel_{task.id}", use_container_width=True):
-                    board.update_status(task.id, "cancelled")
+                    board.update_status(task.id, "failed")  # closest terminal state
                     st.rerun()
 
 
@@ -309,14 +314,14 @@ def page_metrics(st, board) -> None:
 
     # Общие числа
     c1, c2, c3, c4 = st.columns(4)
+    by_status = stats.get("by_status", {})
     c1.metric("Всего задач",  stats.get("total", 0))
-    c2.metric("✅ Выполнено", stats.get("by_status", {}).get("done", 0))
-    c3.metric("🔄 В работе",  stats.get("by_status", {}).get("in_progress", 0))
-    c4.metric("❌ Ошибок",    stats.get("by_status", {}).get("failed", 0))
+    c2.metric("✅ Выполнено", by_status.get("completed", 0))
+    c3.metric("🔄 В работе",  by_status.get("running", 0))
+    c4.metric("❌ Ошибок",    by_status.get("failed", 0))
 
     # По статусам
     st.markdown("**По статусам**")
-    by_status = stats.get("by_status", {})
     if by_status:
         try:
             import streamlit as _st
